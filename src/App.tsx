@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, AlertCircle, LogOut, Settings } from 'lucide-react';
+import { Menu, AlertCircle, LogOut, Settings, Shield } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
@@ -7,17 +7,20 @@ import { TypingIndicator } from './components/TypingIndicator';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { AuthScreen } from './components/AuthScreen';
 import { SettingsModal } from './components/SettingsModal';
+import { AdminPanel } from './components/AdminPanel';
 import { useChat } from './hooks/useChat';
 import { supabase } from './lib/supabase';
 import { AppProvider, useApp } from './contexts/AppContext';
 
 const GUEST_MESSAGE_LIMIT = 12;
+const ADMIN_EMAIL = 'ilyastekkan@gmail.com';
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [showGuestWarning, setShowGuestWarning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { t } = useApp();
@@ -36,6 +39,7 @@ function AppContent() {
   } = useChat();
 
   const isGuest = user?.is_anonymous === true;
+  const isAdmin = user?.email === ADMIN_EMAIL;
   const totalMessages = messages.filter(m => m.role === 'user').length;
 
   const handleSend = async (content: string, imageBase64?: string, fileAttachment?: any, generateImage?: boolean) => {
@@ -111,6 +115,15 @@ function AppContent() {
               Misafir ({totalMessages}/{GUEST_MESSAGE_LIMIT})
             </span>
           )}
+          {isAdmin && (
+            <button
+              onClick={() => setAdminOpen(true)}
+              className="p-2 rounded-lg text-emerald-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Admin Paneli"
+            >
+              <Shield size={18} />
+            </button>
+          )}
           <button
             onClick={() => setSettingsOpen(true)}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
@@ -185,6 +198,7 @@ function AppContent() {
       </main>
 
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} />}
 
       <span className="fixed bottom-3 right-3 text-[10px] font-medium tracking-wider uppercase text-slate-500/40 select-none pointer-events-none">
         Beta
