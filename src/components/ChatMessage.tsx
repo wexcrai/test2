@@ -1,4 +1,5 @@
-import { User, Bot, FileText } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { User, Bot, FileText, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -11,7 +12,17 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
-  const { t } = useApp();
+  const { t, lang } = useApp();
+  const [copied, setCopied] = useState(false);
+
+  const copyLabel = lang === 'tr' ? 'Kopyalandı!' : 'Copied!';
+  const copyTitle = lang === 'tr' ? 'Kopyala' : 'Copy';
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [message.content]);
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -22,6 +33,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
 
       <div className={`max-w-[75%] space-y-2 ${isUser ? 'items-end' : 'items-start'}`}>
+        {!isUser && (
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            title={copyTitle}
+          >
+            {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+            <span className={copied ? 'text-emerald-400' : ''}>{copied ? copyLabel : copyTitle}</span>
+          </button>
+        )}
         <div
           className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
             isUser
