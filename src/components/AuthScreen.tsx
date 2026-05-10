@@ -38,6 +38,19 @@ export function AuthScreen() {
     });
   };
 
+  const handleGuest = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="h-screen flex items-center justify-center bg-slate-950">
       <div className="bg-slate-900 p-8 rounded-2xl border border-slate-700 w-full max-w-md">
@@ -59,7 +72,7 @@ export function AuthScreen() {
 
         <button
           onClick={handleGoogle}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white text-slate-900 font-medium hover:bg-slate-100 transition-colors mb-4"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white text-slate-900 font-medium hover:bg-slate-100 transition-colors mb-3"
         >
           <svg width="18" height="18" viewBox="0 0 18 18">
             <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z" />
@@ -68,6 +81,14 @@ export function AuthScreen() {
             <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z" />
           </svg>
           {t.auth.googleLogin}
+        </button>
+
+        <button
+          onClick={handleGuest}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors mb-4 disabled:opacity-50"
+        >
+          👤 Misafir olarak devam et
         </button>
 
         <div className="flex items-center gap-3 mb-4">
