@@ -56,23 +56,8 @@ function AppContent() {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: banCheck } = await supabase
-          .from('banned_users')
-          .select('id')
-          .eq('email', session.user.email || '')
-          .maybeSingle();
-
-        if (banCheck) {
-          await supabase.auth.signOut();
-          setUser(null);
-        } else {
-          setUser(session.user);
-        }
-      } else {
-        setUser(null);
-      }
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
       if (event === 'INITIAL_SESSION') {
         setAuthLoading(false);
       }
