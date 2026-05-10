@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, ImagePlus, X, FileText, Paperclip, Mic, MicOff, Sparkles } from 'lucide-react';
+import { Send, ImagePlus, X, FileText, Paperclip, Mic, MicOff, Sparkles, Plus } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { extractTextFromPDF, readFileAsText } from '../lib/pdf';
 
@@ -25,11 +25,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [imageMode, setImageMode] = useState(false);
   const [showWarning, setShowWarning] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -38,11 +40,20 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   }, [input]);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
-
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
@@ -51,12 +62,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     };
     reader.readAsDataURL(file);
     e.target.value = '';
+    setMenuOpen(false);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsProcessingFile(true);
     try {
       let content: string;
@@ -65,18 +76,14 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       } else {
         content = await readFileAsText(file);
       }
-
-      setFileAttachment({
-        name: file.name,
-        type: file.type || 'text/plain',
-        content,
-      });
+      setFileAttachment({ name: file.name, type: file.type || 'text/plain', content });
     } catch (err) {
       console.error('File processing error:', err);
     } finally {
       setIsProcessingFile(false);
     }
     e.target.value = '';
+    setMenuOpen(false);
   };
 
   const startRecording = async () => {
@@ -85,17 +92,14 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
-
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
-
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         stream.getTracks().forEach(track => track.stop());
         await transcribeAudio(audioBlob);
       };
-
       mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
@@ -117,14 +121,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       formData.append('file', audioBlob, 'audio.webm');
       formData.append('model', 'whisper-large-v3-turbo');
       formData.append('language', 'tr');
-
       const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
       const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${groqApiKey}` },
         body: formData,
       });
-
       if (res.ok) {
         const data = await res.json();
         if (data.text) {
@@ -139,14 +141,8 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   };
 
-  const removeImage = () => {
-    setImageBase64(null);
-    setImagePreview(null);
-  };
-
-  const removeFile = () => {
-    setFileAttachment(null);
-  };
+  const removeImage = () => { setImageBase64(null); setImagePreview(null); };
+  const removeFile = () => { setFileAttachment(null); };
 
   const handleSubmit = () => {
     const trimmed = input.trim();
@@ -222,34 +218,46 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         <div className="flex items-end gap-2">
           <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
           <input ref={fileInputRef} type="file" accept=".pdf,.txt,.csv,.md,.json,.xml,.html,.css,.js,.ts,.py,.java,.c,.cpp,.rb,.go,.rs,.php,.sh,.yaml,.yml,.ini,.log,.sql" onChange={handleFileSelect} className="hidden" />
-          
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || isProcessingFile}
-            className={`shrink-0 p-2.5 rounded-xl transition-colors disabled:opacity-40 ${fileAttachment ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'}`}
-            title="Dosya ekle"
-          >
-            <Paperclip size={18} />
-          </button>
 
-          <button
-            onClick={() => imageInputRef.current?.click()}
-            disabled={disabled}
-            className={`shrink-0 p-2.5 rounded-xl transition-colors disabled:opacity-40 ${imageBase64 ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'}`}
-            title="Resim ekle"
-          >
-            <ImagePlus size={18} />
-          </button>
+          {/* + Menü */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              disabled={disabled}
+              className="shrink-0 p-2.5 rounded-xl transition-colors disabled:opacity-40 bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700"
+              title="Ekle"
+            >
+              <Plus size={18} />
+            </button>
 
-          <button
-            onClick={() => setImageMode(!imageMode)}
-            disabled={disabled}
-            className={`shrink-0 p-2.5 rounded-xl transition-colors disabled:opacity-40 ${imageMode ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'}`}
-            title="Görsel oluştur"
-          >
-            <Sparkles size={18} />
-          </button>
+            {menuOpen && (
+              <div className="absolute bottom-12 left-0 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden w-48 z-50">
+                <button
+                  onClick={() => { imageInputRef.current?.click(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                >
+                  <ImagePlus size={16} className="text-emerald-400" />
+                  Resim ekle
+                </button>
+                <button
+                  onClick={() => { fileInputRef.current?.click(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                >
+                  <Paperclip size={16} className="text-blue-400" />
+                  Dosya ekle
+                </button>
+                <button
+                  onClick={() => { setImageMode(!imageMode); setMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                >
+                  <Sparkles size={16} className="text-purple-400" />
+                  Görsel oluştur
+                </button>
+              </div>
+            )}
+          </div>
 
+          {/* Mikrofon */}
           <button
             onClick={isRecording ? stopRecording : startRecording}
             disabled={disabled || isTranscribing}
