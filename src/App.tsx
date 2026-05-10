@@ -36,15 +36,14 @@ function AppContent() {
   } = useChat();
 
   const isGuest = user?.is_anonymous === true;
-
   const totalMessages = messages.filter(m => m.role === 'user').length;
 
-  const handleSend = async (content: string, imageBase64?: string, fileAttachment?: any) => {
+  const handleSend = async (content: string, imageBase64?: string, fileAttachment?: any, generateImage?: boolean) => {
     if (isGuest && totalMessages >= GUEST_MESSAGE_LIMIT) {
       setShowGuestWarning(true);
       return;
     }
-    await handleSendOriginal(content, imageBase64, fileAttachment);
+    await handleSendOriginal(content, imageBase64, fileAttachment, generateImage);
     if (isGuest && totalMessages + 1 >= GUEST_MESSAGE_LIMIT) {
       setShowGuestWarning(true);
     }
