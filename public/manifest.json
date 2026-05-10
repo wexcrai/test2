@@ -1,7 +1,7 @@
 {
-  "name": "Yapay Zeka Asistanı",
-  "short_name": "YZ Asistan",
-  "description": "Yapay zeka destekli sohbet asistanı",
+  "name": "Zenkus AI",
+  "short_name": "Zenkus AI",
+  "description": "Zenkus yapay zeka destekli sohbet asistanı",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
