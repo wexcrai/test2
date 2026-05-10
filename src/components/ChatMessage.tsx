@@ -50,6 +50,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
               : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'
           }`}
         >
+          {isUser && message.image_base64 && (
+            <img
+              src={message.image_base64}
+              alt="Uploaded"
+              className="max-h-48 rounded-lg mb-2 border border-white/10"
+            />
+          )}
           {isUser ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (

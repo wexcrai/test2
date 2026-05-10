@@ -35,16 +35,21 @@ export interface Message {
   conversation_id: string;
   role: 'user' | 'assistant';
   content: string;
+  image_base64?: string | null;
   sources: Source[];
   created_at: string;
 }
 
-export async function sendMessage(message: string, conversationId?: string): Promise<ChatResponse> {
+export async function sendMessage(message: string, conversationId?: string, imageBase64?: string): Promise<ChatResponse> {
   const headers = await getHeaders();
+  const body: Record<string, string> = { message };
+  if (conversationId) body.conversationId = conversationId;
+  if (imageBase64) body.imageBase64 = imageBase64;
+
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ message, conversationId }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json();

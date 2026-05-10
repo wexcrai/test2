@@ -64,8 +64,8 @@ export function useChat() {
   }, []);
 
   const handleSendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim() || isSending) return;
+    async (content: string, imageBase64?: string) => {
+      if ((!content.trim() && !imageBase64) || isSending) return;
       setIsSending(true);
       setError(null);
       setSources([]);
@@ -75,13 +75,14 @@ export function useChat() {
         conversation_id: activeConversationId || '',
         role: 'user',
         content,
+        image_base64: imageBase64 || null,
         sources: [],
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, userMsg]);
 
       try {
-        const response = await sendMessage(content, activeConversationId || undefined);
+        const response = await sendMessage(content, activeConversationId || undefined, imageBase64);
         if (!activeConversationId) setActiveConversationId(response.conversationId);
 
         const assistantMsg: Message = {
