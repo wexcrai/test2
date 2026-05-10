@@ -2,6 +2,7 @@ import { User, Bot, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import { useApp } from '../contexts/AppContext';
 import type { Message } from '../lib/api';
 
 interface ChatMessageProps {
@@ -10,6 +11,7 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const { t } = useApp();
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -40,7 +42,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
         {!isUser && message.sources && message.sources.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-xs text-slate-500 font-medium">Kaynaklar</p>
+            <p className="text-xs text-slate-500 font-medium">{t.chat.sources}</p>
             <div className="space-y-1">
               {message.sources.map((source, i) => (
                 <div

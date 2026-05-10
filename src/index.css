@@ -4,6 +4,88 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light mode overrides */
+.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: #ffffff;
+  --border: #e2e8f0;
+  --border-subtle: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-placeholder: #94a3b8;
+  --accent: #059669;
+  --accent-light: #d1fae5;
+  --accent-text: #047857;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+}
+
+.dark {
+  --bg-primary: #020617;
+  --bg-secondary: #0f172a;
+  --bg-tertiary: #1e293b;
+  --bg-card: #1e293b;
+  --border: #334155;
+  --border-subtle: rgba(51, 65, 85, 0.5);
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --text-placeholder: #64748b;
+  --accent: #059669;
+  --accent-light: rgba(5, 150, 105, 0.2);
+  --accent-text: #34d399;
+  --danger: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.1);
+}
+
+/* Light mode component overrides */
+.light .bg-slate-950 { background-color: var(--bg-primary); }
+.light .bg-slate-900 { background-color: var(--bg-secondary); }
+.light .bg-slate-900\/80 { background-color: rgba(248, 250, 252, 0.8); }
+.light .bg-slate-800 { background-color: var(--bg-tertiary); }
+.light .bg-slate-800\/50 { background-color: rgba(241, 245, 249, 0.5); }
+
+.light .border-slate-700 { border-color: var(--border); }
+.light .border-slate-700\/50 { border-color: var(--border-subtle); }
+.light .border-slate-700\/30 { border-color: rgba(226, 232, 240, 0.3); }
+
+.light .text-slate-100 { color: var(--text-primary); }
+.light .text-slate-200 { color: var(--text-primary); }
+.light .text-slate-300 { color: var(--text-secondary); }
+.light .text-slate-400 { color: var(--text-muted); }
+.light .text-slate-500 { color: var(--text-placeholder); }
+
+.light .text-white { color: var(--text-primary); }
+.light .placeholder-slate-500::placeholder { color: var(--text-placeholder); }
+
+.light .hover\:text-white:hover { color: var(--text-primary); }
+.light .hover\:bg-slate-800:hover { background-color: var(--bg-tertiary); }
+.light .hover\:bg-slate-800\/50:hover { background-color: rgba(241, 245, 249, 0.5); }
+
+.light .bg-emerald-600 { background-color: var(--accent); }
+.light .bg-emerald-600\/20 { background-color: var(--accent-light); }
+.light .text-emerald-400 { color: var(--accent-text); }
+.light .text-emerald-500 { color: var(--accent); }
+.light .hover\:bg-emerald-500:hover { background-color: #10b981; }
+.light .focus\:border-emerald-500:focus { border-color: var(--accent); }
+.light .border-emerald-500\/50 { border-color: rgba(5, 150, 105, 0.5); }
+.light .bg-emerald-600\/10 { background-color: var(--accent-light); }
+
+.light .bg-red-500\/10 { background-color: var(--danger-light); }
+.light .bg-red-600\/10 { background-color: var(--danger-light); }
+.light .bg-red-600\/5 { background-color: rgba(220, 38, 38, 0.05); }
+.light .border-red-500\/20 { border-color: rgba(220, 38, 38, 0.2); }
+.light .border-red-500\/30 { border-color: rgba(220, 38, 38, 0.3); }
+
+.light .bg-black\/50 { background-color: rgba(0, 0, 0, 0.3); }
+.light .bg-black\/60 { background-color: rgba(0, 0, 0, 0.4); }
+
+.light .shadow-emerald-500\/50 { box-shadow: 0 1px 2px 0 rgba(5, 150, 105, 0.3); }
+
+/* Markdown styles */
 .markdown-body p {
   margin-bottom: 0.5rem;
 }
@@ -105,4 +187,36 @@
 .markdown-body hr {
   border-color: #334155;
   margin: 0.75rem 0;
+}
+
+/* Light mode markdown overrides */
+.light .markdown-body blockquote {
+  border-left-color: #cbd5e1;
+  color: #64748b;
+}
+
+.light .markdown-body a {
+  color: #059669;
+}
+
+.light .markdown-body a:hover {
+  color: #047857;
+}
+
+.light .markdown-body th,
+.light .markdown-body td {
+  border-color: #e2e8f0;
+}
+
+.light .markdown-body th {
+  background: #f1f5f9;
+}
+
+.light .markdown-body :not(pre) > code {
+  background: #f1f5f9;
+  color: #059669;
+}
+
+.light .markdown-body hr {
+  border-color: #e2e8f0;
 }

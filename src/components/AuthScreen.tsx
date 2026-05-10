@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useApp } from '../contexts/AppContext';
 
 export function AuthScreen() {
+  const { t } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
@@ -20,7 +22,7 @@ export function AuthScreen() {
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setMessage('Kayıt başarılı! Email inizi kontrol edin.');
+        setMessage(t.auth.registerSuccess);
       }
     } catch (err: any) {
       setError(err.message);
@@ -39,9 +41,9 @@ export function AuthScreen() {
   return (
     <div className="h-screen flex items-center justify-center bg-slate-950">
       <div className="bg-slate-900 p-8 rounded-2xl border border-slate-700 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-white mb-2 text-center">Hoş Geldiniz</h1>
+        <h1 className="text-2xl font-bold text-white mb-2 text-center">{t.auth.welcome}</h1>
         <p className="text-slate-400 text-center mb-6 text-sm">
-          {isLogin ? 'Hesabınıza giriş yapın' : 'Yeni hesap oluşturun'}
+          {isLogin ? t.auth.loginPrompt : t.auth.registerPrompt}
         </p>
 
         {error && (
@@ -65,25 +67,25 @@ export function AuthScreen() {
             <path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z" />
             <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z" />
           </svg>
-          Google ile Giriş Yap
+          {t.auth.googleLogin}
         </button>
 
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 h-px bg-slate-700" />
-          <span className="text-slate-500 text-sm">veya</span>
+          <span className="text-slate-500 text-sm">{t.auth.or}</span>
           <div className="flex-1 h-px bg-slate-700" />
         </div>
 
         <input
           type="email"
-          placeholder="Email"
+          placeholder={t.auth.email}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 mb-3 focus:outline-none focus:border-emerald-500"
         />
         <input
           type="password"
-          placeholder="Şifre"
+          placeholder={t.auth.password}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 mb-4 focus:outline-none focus:border-emerald-500"
@@ -93,13 +95,13 @@ export function AuthScreen() {
           disabled={loading}
           className="w-full px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors disabled:opacity-50"
         >
-          {loading ? 'Yükleniyor...' : isLogin ? 'Giriş Yap' : 'Kayıt Ol'}
+          {loading ? t.auth.loading : isLogin ? t.auth.login : t.auth.register}
         </button>
 
         <p className="text-center text-slate-400 text-sm mt-4">
-          {isLogin ? 'Hesabın yok mu?' : 'Zaten hesabın var mı?'}{' '}
+          {isLogin ? t.auth.noAccount : t.auth.hasAccount}{' '}
           <button onClick={() => setIsLogin(!isLogin)} className="text-emerald-400 hover:underline">
-            {isLogin ? 'Kayıt Ol' : 'Giriş Yap'}
+            {isLogin ? t.auth.register : t.auth.login}
           </button>
         </p>
       </div>

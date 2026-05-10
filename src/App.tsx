@@ -1,19 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, AlertCircle, LogOut } from 'lucide-react';
+import { Menu, AlertCircle, LogOut, Settings } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { TypingIndicator } from './components/TypingIndicator';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { AuthScreen } from './components/AuthScreen';
+import { SettingsModal } from './components/SettingsModal';
 import { useChat } from './hooks/useChat';
 import { supabase } from './lib/supabase';
+import { AppProvider, useApp } from './contexts/AppContext';
 
-function App() {
+function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { t } = useApp();
 
   const {
     conversations,
@@ -50,7 +54,7 @@ function App() {
 
   if (authLoading)
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-950">
+      <div className="h-screen flex items-center justify-center bg-slate-950 dark:bg-slate-950">
         <div className="w-6 h-6 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
       </div>
     );
@@ -58,7 +62,7 @@ function App() {
   if (!user) return <AuthScreen />;
 
   return (
-    <div className="h-screen flex bg-slate-950 text-slate-100 overflow-hidden">
+    <div className="h-screen flex bg-slate-950 text-slate-100 overflow-hidden dark:bg-slate-950 dark:text-slate-100">
       <Sidebar
         conversations={conversations}
         activeId={activeConversationId}
@@ -81,14 +85,21 @@ function App() {
             <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
             <h1 className="text-sm font-medium text-slate-200 truncate">
               {activeConversationId
-                ? conversations.find((c) => c.id === activeConversationId)?.title || 'Sohbet'
-                : 'Yeni Sohbet'}
+                ? conversations.find((c) => c.id === activeConversationId)?.title || t.chat.chat
+                : t.chat.newChat}
             </h1>
           </div>
           <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            title={t.settings.title}
+          >
+            <Settings size={18} />
+          </button>
+          <button
             onClick={handleLogout}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title="Çıkış Yap"
+            title={t.settings.logout}
           >
             <LogOut size={18} />
           </button>
@@ -122,10 +133,20 @@ function App() {
         <ChatInput onSend={handleSend} disabled={isSending} />
       </main>
 
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
       <span className="fixed bottom-3 right-3 text-[10px] font-medium tracking-wider uppercase text-slate-500/40 select-none pointer-events-none">
         Beta
       </span>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }
 

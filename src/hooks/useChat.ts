@@ -8,8 +8,10 @@ import {
   type Message,
   type Source,
 } from '../lib/api';
+import { useApp } from '../contexts/AppContext';
 
 export function useChat() {
+  const { t } = useApp();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -25,12 +27,12 @@ export function useChat() {
     try {
       const convs = await getConversations();
       setConversations(convs);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sohbetler yuklenemedi.');
+    } catch {
+      setError(t.errors.loadConversations);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!initialLoadDone.current) {
@@ -47,12 +49,12 @@ export function useChat() {
     try {
       const msgs = await getMessages(id);
       setMessages(msgs);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Mesajlar yuklenemedi.');
+    } catch {
+      setError(t.errors.loadMessages);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const createNewChat = useCallback(() => {
     setActiveConversationId(null);
@@ -93,13 +95,13 @@ export function useChat() {
         setMessages((prev) => [...prev, assistantMsg]);
         setSources(response.sources);
         await loadConversations();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Mesaj gonderilemedi.');
+      } catch {
+        setError(t.errors.sendMessage);
       } finally {
         setIsSending(false);
       }
     },
-    [activeConversationId, isSending, loadConversations],
+    [activeConversationId, isSending, loadConversations, t],
   );
 
   const removeConversation = useCallback(
@@ -112,11 +114,11 @@ export function useChat() {
           setMessages([]);
           setSources([]);
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Sohbet silinemedi.');
+      } catch {
+        setError(t.errors.deleteConversation);
       }
     },
-    [activeConversationId],
+    [activeConversationId, t],
   );
 
   return {
