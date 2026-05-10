@@ -1,20 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { X, Users, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
-
-interface User {
-  id: string;
-  email: string;
-  created_at: string;
-  last_sign_in_at: string;
-}
+import { X, Users, MessageSquare, ChevronDown, ChevronUp, Terminal } from 'lucide-react';
 
 interface Conversation {
   id: string;
   title: string;
   created_at: string;
   user_id: string;
-  messageCount?: number;
 }
 
 interface AdminPanelProps {
@@ -22,12 +14,14 @@ interface AdminPanelProps {
 }
 
 export function AdminPanel({ onClose }: AdminPanelProps) {
-  const [users, setUsers] = useState<User[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'conversations'>('users');
+  const [activeTab, setActiveTab] = useState<'conversations' | 'commands'>('conversations');
   const [loading, setLoading] = useState(true);
   const [expandedConv, setExpandedConv] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, any[]>>({});
+  const [command, setCommand] = useState('');
+  const [commandLog, setCommandLog] = useState<string[]>(['Zenkus Admin Konsolu v1.0', 'Komutlar: !ban <email>, !unban <email>, !listban']);
+  const commandInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadData();
@@ -62,6 +56,60 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
     setExpandedConv(convId);
   };
 
+  const handleCommand = async () => {
+    const cmd = command.trim();
+    if (!cmd) return;
+
+    setCommandLog(prev => [...prev, `> ${cmd}`]);
+    setCommand('');
+
+    const parts = cmd.split(' ');
+    const action = parts[0].toLowerCase();
+    const target = parts[1];
+
+    if (action === '!ban') {
+      if (!target) {
+        setCommandLog(prev => [...prev, '❌ Kullanım: !ban <email>']);
+        return;
+      }
+      const { error } = await supabase.from('banned_users').insert({ email: target, reason: 'Admin tarafından banlandı' });
+      if (error) {
+        setCommandLog(prev => [...prev, `❌ Hata: ${error.message}`]);
+      } else {
+        setCommandLog(prev => [...prev, `✅ ${target} banlandı!`]);
+      }
+    } else if (action === '!unban') {
+      if (!target) {
+        setCommandLog(prev => [...prev, '❌ Kullanım: !unban <email>']);
+        return;
+      }
+      const { error } = await supabase.from('banned_users').delete().eq('email', target);
+      if (error) {
+        setCommandLog(prev => [...prev, `❌ Hata: ${error.message}`]);
+      } else {
+        setCommandLog(prev => [...prev, `✅ ${target} banı kaldırıldı!`]);
+      }
+    } else if (action === '!listban') {
+      const { data, error } = await supabase.from('banned_users').select('*');
+      if (error) {
+        setCommandLog(prev => [...prev, `❌ Hata: ${error.message}`]);
+      } else if (!data || data.length === 0) {
+        setCommandLog(prev => [...prev, '📋 Banlı kullanıcı yok.']);
+      } else {
+        setCommandLog(prev => [...prev, `📋 Banlı kullanıcılar (${data.length}):`]);
+        data.forEach((u: any) => {
+          setCommandLog(prev => [...prev, `  - ${u.email || u.user_id}`]);
+        });
+      }
+    } else {
+      setCommandLog(prev => [...prev, `❌ Bilinmeyen komut: ${action}`]);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleCommand();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-3xl max-h-[85vh] flex flex-col">
@@ -74,64 +122,83 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
 
         <div className="flex gap-2 px-6 py-3 border-b border-slate-700">
           <button
-            onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'users' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-          >
-            <Users size={16} />
-            Sohbetler
-          </button>
-          <button
             onClick={() => setActiveTab('conversations')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'conversations' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
             <MessageSquare size={16} />
-            Mesajlar
+            Sohbetler
+          </button>
+          <button
+            onClick={() => setActiveTab('commands')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'commands' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            <Terminal size={16} />
+            Komutlar
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
-            </div>
-          ) : activeTab === 'users' ? (
-            <div className="space-y-3">
-              <p className="text-slate-400 text-sm mb-4">Toplam {conversations.length} sohbet</p>
-              {conversations.map(conv => (
-                <div key={conv.id} className="bg-slate-800 rounded-xl border border-slate-700">
-                  <button
-                    onClick={() => loadMessages(conv.id)}
-                    className="w-full flex items-center justify-between p-4 text-left"
-                  >
-                    <div>
-                      <p className="text-white text-sm font-medium">{conv.title}</p>
-                      <p className="text-slate-500 text-xs mt-1">{new Date(conv.created_at).toLocaleString('tr-TR')}</p>
-                      <p className="text-slate-600 text-xs">{conv.user_id}</p>
-                    </div>
-                    {expandedConv === conv.id ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-                  </button>
-                  {expandedConv === conv.id && messages[conv.id] && (
-                    <div className="border-t border-slate-700 p-4 space-y-2">
-                      {messages[conv.id].map((msg: any) => (
-                        <div key={msg.id} className={`p-3 rounded-lg text-sm ${msg.role === 'user' ? 'bg-slate-700 text-slate-200' : 'bg-emerald-900/30 text-emerald-200'}`}>
-                          <span className="font-medium text-xs opacity-60">{msg.role === 'user' ? '👤 Kullanıcı' : '🤖 Zenkus AI'}</span>
-                          <p className="mt-1">{msg.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+          {activeTab === 'conversations' ? (
+            loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-slate-400 text-sm mb-4">Toplam {conversations.length} sohbet</p>
+                {conversations.map(conv => (
+                  <div key={conv.id} className="bg-slate-800 rounded-xl border border-slate-700">
+                    <button
+                      onClick={() => loadMessages(conv.id)}
+                      className="w-full flex items-center justify-between p-4 text-left"
+                    >
+                      <div>
+                        <p className="text-white text-sm font-medium">{conv.title}</p>
+                        <p className="text-slate-500 text-xs mt-1">{new Date(conv.created_at).toLocaleString('tr-TR')}</p>
+                        <p className="text-slate-600 text-xs font-mono">{conv.user_id}</p>
+                      </div>
+                      {expandedConv === conv.id ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                    </button>
+                    {expandedConv === conv.id && messages[conv.id] && (
+                      <div className="border-t border-slate-700 p-4 space-y-2">
+                        {messages[conv.id].map((msg: any) => (
+                          <div key={msg.id} className={`p-3 rounded-lg text-sm ${msg.role === 'user' ? 'bg-slate-700 text-slate-200' : 'bg-emerald-900/30 text-emerald-200'}`}>
+                            <span className="font-medium text-xs opacity-60">{msg.role === 'user' ? '👤 Kullanıcı' : '🤖 Zenkus AI'}</span>
+                            <p className="mt-1">{msg.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
-            <div className="space-y-3">
-              <p className="text-slate-400 text-sm mb-4">Tüm sohbet mesajları</p>
-              {conversations.map(conv => (
-                <div key={conv.id} className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-                  <p className="text-white text-sm font-medium">{conv.title}</p>
-                  <p className="text-slate-500 text-xs mt-1">{new Date(conv.created_at).toLocaleString('tr-TR')}</p>
-                </div>
-              ))}
+            <div className="flex flex-col h-full gap-3">
+              <div className="flex-1 bg-slate-950 rounded-xl p-4 font-mono text-sm overflow-y-auto min-h-[300px]">
+                {commandLog.map((log, i) => (
+                  <div key={i} className={`mb-1 ${log.startsWith('>') ? 'text-emerald-400' : log.startsWith('❌') ? 'text-red-400' : log.startsWith('✅') ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {log}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={commandInputRef}
+                  type="text"
+                  value={command}
+                  onChange={(e) => setCommand(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="!ban email@ornek.com"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono text-sm"
+                />
+                <button
+                  onClick={handleCommand}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors text-sm"
+                >
+                  Çalıştır
+                </button>
+              </div>
             </div>
           )}
         </div>
