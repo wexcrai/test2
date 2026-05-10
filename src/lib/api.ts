@@ -52,12 +52,14 @@ export async function sendMessage(
   conversationId?: string,
   imageBase64?: string,
   fileAttachment?: FileAttachmentData,
+  generateImage?: boolean,
 ): Promise<ChatResponse> {
   const headers = await getHeaders();
   const body: Record<string, unknown> = { message };
   if (conversationId) body.conversationId = conversationId;
   if (imageBase64) body.imageBase64 = imageBase64;
   if (fileAttachment) body.fileAttachment = fileAttachment;
+  if (generateImage) body.generateImage = true;
 
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
