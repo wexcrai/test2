@@ -24,6 +24,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [imageMode, setImageMode] = useState(false);
+  const [showWarning, setShowWarning] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +129,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         const data = await res.json();
         if (data.text) {
           setInput(prev => prev + (prev ? ' ' : '') + data.text);
+          setTimeout(() => textareaRef.current?.focus(), 100);
         }
       }
     } catch (err) {
@@ -155,6 +157,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     setImagePreview(null);
     setFileAttachment(null);
     if (imageMode) setImageMode(false);
+    setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -169,6 +172,16 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   return (
     <div className="shrink-0 border-t border-slate-700/50 bg-slate-900/80 backdrop-blur-sm p-4">
       <div className="max-w-3xl mx-auto">
+
+        {showWarning && (
+          <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <span className="text-xs text-yellow-400 font-medium">⚠️ UYARI: YAPAY ZEKA BETA (TEST) SÜRÜMÜNDEDİR. GÖRSEL OLUŞTURMADA BAZI SORUNLAR ORTAYA ÇIKABİLİR!</span>
+            <button onClick={() => setShowWarning(false)} className="ml-auto text-yellow-400 hover:text-white shrink-0">
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {imageMode && (
           <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
             <Sparkles size={14} className="text-purple-400" />
