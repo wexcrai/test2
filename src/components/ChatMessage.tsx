@@ -1,4 +1,7 @@
 import { User, Bot, FileText } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import type { Message } from '../lib/api';
 
 interface ChatMessageProps {
@@ -24,7 +27,15 @@ export function ChatMessage({ message }: ChatMessageProps) {
               : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'
           }`}
         >
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          {isUser ? (
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          ) : (
+            <div className="markdown-body">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          )}
         </div>
 
         {!isUser && message.sources && message.sources.length > 0 && (
