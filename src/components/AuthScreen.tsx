@@ -12,11 +12,25 @@ export function AuthScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [showWarning, setShowWarning] = useState(true);
 
+  const checkBan = async (email: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('banned_users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    return !!data;
+  };
+
   const handleEmailAuth = async () => {
     setLoading(true);
     setError(null);
     setMessage(null);
     try {
+      const banned = await checkBan(email);
+      if (banned) {
+        setError('Bu hesap engellenmiştir. Destek için iletişime geçin.');
+        return;
+      }
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
