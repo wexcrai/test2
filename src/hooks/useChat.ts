@@ -65,7 +65,7 @@ export function useChat() {
   }, []);
 
   const handleSendMessage = useCallback(
-    async (content: string, imageBase64?: string, fileAttachment?: FileAttachmentData) => {
+    async (content: string, imageBase64?: string, fileAttachment?: FileAttachmentData, generateImage?: boolean) => {
       if ((!content.trim() && !imageBase64 && !fileAttachment) || isSending) return;
       setIsSending(true);
       setError(null);
@@ -89,6 +89,7 @@ export function useChat() {
           activeConversationId || undefined,
           imageBase64,
           fileAttachment,
+          generateImage,
         );
         if (!activeConversationId) setActiveConversationId(response.conversationId);
 
