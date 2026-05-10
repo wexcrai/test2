@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { User, Bot, FileText, Copy, Check } from 'lucide-react';
+import { User, Bot, FileText, Copy, Check, Volume2, VolumeX } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -14,6 +14,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const { t, lang } = useApp();
   const [copied, setCopied] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const copyLabel = lang === 'tr' ? 'Kopyalandı!' : 'Copied!';
   const copyTitle = lang === 'tr' ? 'Kopyala' : 'Copy';
@@ -23,6 +24,25 @@ export function ChatMessage({ message }: ChatMessageProps) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);
+
+  const handleSpeak = useCallback(() => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(message.content);
+    utterance.lang = 'tr-TR';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  }, [message.content, isSpeaking]);
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -34,14 +54,24 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
       <div className={`max-w-[75%] space-y-2 ${isUser ? 'items-end' : 'items-start'}`}>
         {!isUser && (
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-            title={copyTitle}
-          >
-            {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-            <span className={copied ? 'text-emerald-400' : ''}>{copied ? copyLabel : copyTitle}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              title={copyTitle}
+            >
+              {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+              <span className={copied ? 'text-emerald-400' : ''}>{copied ? copyLabel : copyTitle}</span>
+            </button>
+            <button
+              onClick={handleSpeak}
+              className={`flex items-center gap-1 text-xs transition-colors ${isSpeaking ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
+              title={isSpeaking ? 'Durdur' : 'Sesli oku'}
+            >
+              {isSpeaking ? <VolumeX size={12} /> : <Volume2 size={12} />}
+              <span>{isSpeaking ? 'Durdur' : 'Sesli oku'}</span>
+            </button>
+          </div>
         )}
         <div
           className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
