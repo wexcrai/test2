@@ -10,6 +10,7 @@ export function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showWarning, setShowWarning] = useState(true);
 
   const handleEmailAuth = async () => {
     setLoading(true);
@@ -50,6 +51,26 @@ export function AuthScreen() {
       setLoading(false);
     }
   };
+
+  if (showWarning) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-950">
+        <div className="bg-slate-900 p-8 rounded-2xl border border-yellow-500/30 w-full max-w-md text-center">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-yellow-400 mb-4">UYARI</h2>
+          <p className="text-slate-300 text-sm leading-relaxed mb-6">
+            YAPAY ZEKA BETA (TEST) SÜRÜMÜNDEDİR. GÖRSEL OLUŞTURMADA BAZI SORUNLAR ORTAYA ÇIKABİLİR!
+          </p>
+          <button
+            onClick={() => setShowWarning(false)}
+            className="w-full px-4 py-3 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold transition-colors"
+          >
+            Tamam, Anladım
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex items-center justify-center bg-slate-950">
