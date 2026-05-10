@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, ImagePlus, X, FileText, Paperclip } from 'lucide-react';
+import { Send, ImagePlus, X, FileText, Paperclip, Mic, MicOff } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { extractTextFromPDF, readFileAsText } from '../lib/pdf';
 
@@ -21,9 +21,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [fileAttachment, setFileAttachment] = useState<FileAttachment | null>(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -71,6 +75,67 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       setIsProcessingFile(false);
     }
     e.target.value = '';
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach(track => track.stop());
+        await transcribeAudio(audioBlob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Mikrofon erişimi reddedildi:', err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'audio.webm');
+      formData.append('model', 'whisper-large-v3-turbo');
+      formData.append('language', 'tr');
+
+      const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
+      const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqApiKey}`,
+        },
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text) {
+          setInput(prev => prev + (prev ? ' ' : '') + data.text);
+        }
+      }
+    } catch (err) {
+      console.error('Transcription error:', err);
+    } finally {
+      setIsTranscribing(false);
+    }
   };
 
   const removeImage = () => {
@@ -182,14 +247,28 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           >
             <ImagePlus size={18} />
           </button>
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={disabled || isTranscribing}
+            className={`shrink-0 p-2.5 rounded-xl transition-colors disabled:opacity-40 ${
+              isRecording
+                ? 'bg-red-600/20 text-red-400 border border-red-500/30 animate-pulse'
+                : isTranscribing
+                ? 'bg-yellow-600/20 text-yellow-400 border border-yellow-500/30'
+                : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'
+            }`}
+            title={isRecording ? 'Kaydı durdur' : 'Sesli mesaj'}
+          >
+            {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+          </button>
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isProcessingFile ? 'Dosya isleniyor...' : t.chat.typeMessage}
+            placeholder={isProcessingFile ? 'Dosya isleniyor...' : isTranscribing ? 'Ses yazıya çevriliyor...' : t.chat.typeMessage}
             rows={1}
-            disabled={disabled || isProcessingFile}
+            disabled={disabled || isProcessingFile || isTranscribing}
             className="flex-1 resize-none rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50"
           />
           <button
