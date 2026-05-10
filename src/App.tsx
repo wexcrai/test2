@@ -58,7 +58,6 @@ function AppContent() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        // Ban kontrolü
         const { data: banCheck } = await supabase
           .from('banned_users')
           .select('id')
@@ -77,9 +76,6 @@ function AppContent() {
       if (event === 'INITIAL_SESSION') {
         setAuthLoading(false);
       }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
     });
     return () => subscription.unsubscribe();
   }, []);
