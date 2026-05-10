@@ -121,6 +121,10 @@ function App() {
 
         <ChatInput onSend={handleSend} disabled={isSending} />
       </main>
+
+      <span className="fixed bottom-3 right-3 text-[10px] font-medium tracking-wider uppercase text-slate-500/40 select-none pointer-events-none">
+        Beta
+      </span>
     </div>
   );
 }
