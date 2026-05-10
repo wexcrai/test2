@@ -57,6 +57,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
               className="max-h-48 rounded-lg mb-2 border border-white/10"
             />
           )}
+          {isUser && message.file_attachment && (
+            <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-white/10 border border-white/10">
+              <FileText size={16} className="shrink-0 text-emerald-200" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-white truncate">{message.file_attachment.name}</p>
+                <p className="text-xs text-emerald-200/70">
+                  {message.file_attachment.type === 'application/pdf' ? 'PDF' : 'Text'}
+                </p>
+              </div>
+            </div>
+          )}
           {isUser ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (

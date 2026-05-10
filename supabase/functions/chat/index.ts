@@ -10,6 +10,12 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const VISION_MODEL = "llama-3.2-11b-vision-preview";
 const TEXT_MODEL = "llama-3.3-70b-versatile";
 
+interface FileAttachment {
+  name: string;
+  type: string;
+  content: string;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -48,7 +54,7 @@ Deno.serve(async (req: Request) => {
       if (conversationId) {
         const { data: messages, error: msgError } = await supabase
           .from("messages")
-          .select("id, conversation_id, role, content, image_base64, sources, created_at")
+          .select("id, conversation_id, role, content, image_base64, file_attachment, sources, created_at")
           .eq("conversation_id", conversationId)
           .order("created_at", { ascending: true });
 
@@ -94,14 +100,15 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST") {
       const body = await req.json();
-      const { message, conversationId, imageBase64 } = body as {
+      const { message, conversationId, imageBase64, fileAttachment } = body as {
         message: string;
         conversationId?: string;
         imageBase64?: string;
+        fileAttachment?: FileAttachment;
       };
 
-      if (!message && !imageBase64) {
-        return new Response(JSON.stringify({ error: "Message or image required" }), {
+      if (!message && !imageBase64 && !fileAttachment) {
+        return new Response(JSON.stringify({ error: "Message, image, or file required" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -110,7 +117,7 @@ Deno.serve(async (req: Request) => {
       let convId = conversationId;
 
       if (!convId) {
-        const titleText = message ? message.slice(0, 50) : "Image Chat";
+        const titleText = message ? message.slice(0, 50) : (fileAttachment ? fileAttachment.name : "Image Chat");
         const { data: conv, error: convError } = await supabase
           .from("conversations")
           .insert({ user_id: userId, title: titleText })
@@ -134,12 +141,13 @@ Deno.serve(async (req: Request) => {
         role: "user",
         content: message || "",
         image_base64: imageBase64 || null,
+        file_attachment: fileAttachment || null,
       });
 
       // Fetch conversation history for context
       const { data: history } = await supabase
         .from("messages")
-        .select("role, content, image_base64")
+        .select("role, content, image_base64, file_attachment")
         .eq("conversation_id", convId)
         .order("created_at", { ascending: true });
 
@@ -164,6 +172,14 @@ Deno.serve(async (req: Request) => {
             },
           });
           groqMessages.push({ role: "user", content });
+        } else if (msg.role === "user" && msg.file_attachment) {
+          const file = msg.file_attachment as FileAttachment;
+          const fileContent = file.content || "";
+          const userText = msg.content || "";
+          const combinedText = userText
+            ? `${userText}\n\n--- Dosya: ${file.name} ---\n${fileContent}`
+            : `Dosya: ${file.name}\n${fileContent}`;
+          groqMessages.push({ role: "user", content: combinedText });
         } else {
           groqMessages.push({ role: msg.role, content: msg.content });
         }
@@ -204,7 +220,7 @@ Deno.serve(async (req: Request) => {
       const textResponse = groqData.choices?.[0]?.message?.content || "No response";
 
       // Save assistant message
-      const { data: assistantMsg } = await supabase
+      await supabase
         .from("messages")
         .insert({
           conversation_id: convId,

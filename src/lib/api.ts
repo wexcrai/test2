@@ -17,6 +17,12 @@ export interface Source {
   chunk: string;
 }
 
+export interface FileAttachmentData {
+  name: string;
+  type: string;
+  content: string;
+}
+
 export interface ChatResponse {
   conversationId: string;
   textResponse: string;
@@ -36,15 +42,22 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   image_base64?: string | null;
+  file_attachment?: FileAttachmentData | null;
   sources: Source[];
   created_at: string;
 }
 
-export async function sendMessage(message: string, conversationId?: string, imageBase64?: string): Promise<ChatResponse> {
+export async function sendMessage(
+  message: string,
+  conversationId?: string,
+  imageBase64?: string,
+  fileAttachment?: FileAttachmentData,
+): Promise<ChatResponse> {
   const headers = await getHeaders();
-  const body: Record<string, string> = { message };
+  const body: Record<string, unknown> = { message };
   if (conversationId) body.conversationId = conversationId;
   if (imageBase64) body.imageBase64 = imageBase64;
+  if (fileAttachment) body.fileAttachment = fileAttachment;
 
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',

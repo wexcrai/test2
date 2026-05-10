@@ -7,6 +7,7 @@ import {
   type Conversation,
   type Message,
   type Source,
+  type FileAttachmentData,
 } from '../lib/api';
 import { useApp } from '../contexts/AppContext';
 
@@ -64,8 +65,8 @@ export function useChat() {
   }, []);
 
   const handleSendMessage = useCallback(
-    async (content: string, imageBase64?: string) => {
-      if ((!content.trim() && !imageBase64) || isSending) return;
+    async (content: string, imageBase64?: string, fileAttachment?: FileAttachmentData) => {
+      if ((!content.trim() && !imageBase64 && !fileAttachment) || isSending) return;
       setIsSending(true);
       setError(null);
       setSources([]);
@@ -76,13 +77,19 @@ export function useChat() {
         role: 'user',
         content,
         image_base64: imageBase64 || null,
+        file_attachment: fileAttachment || null,
         sources: [],
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, userMsg]);
 
       try {
-        const response = await sendMessage(content, activeConversationId || undefined, imageBase64);
+        const response = await sendMessage(
+          content,
+          activeConversationId || undefined,
+          imageBase64,
+          fileAttachment,
+        );
         if (!activeConversationId) setActiveConversationId(response.conversationId);
 
         const assistantMsg: Message = {

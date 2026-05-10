@@ -25,6 +25,9 @@ const translations = {
       newChatBtn: 'Yeni Sohbet',
       delete: 'Sil',
       typeMessage: 'Mesajınızı yazın...',
+      addFile: 'Dosya ekle',
+      addImage: 'Resim ekle',
+      processingFile: 'Dosya işleniyor...',
       sources: 'Kaynaklar',
     },
     welcome: {
@@ -86,6 +89,9 @@ const translations = {
       newChatBtn: 'New Chat',
       delete: 'Delete',
       typeMessage: 'Type your message...',
+      addFile: 'Add file',
+      addImage: 'Add image',
+      processingFile: 'Processing file...',
       sources: 'Sources',
     },
     welcome: {
