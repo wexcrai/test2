@@ -27,6 +27,7 @@ function AppContent() {
 
   const {
     conversations,
+    setConversations,
     activeConversationId,
     messages,
     isLoading,
@@ -37,7 +38,7 @@ function AppContent() {
     createNewChat,
     removeConversation,
   } = useChat();
-
+  
   const isGuest = user?.is_anonymous === true;
   const isAdmin = user?.email === ADMIN_EMAIL;
   const totalMessages = messages.filter(m => m.role === 'user').length;
