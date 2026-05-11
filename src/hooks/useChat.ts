@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  sendMessageStream,
+  sendMessage,
   getConversations,
   getMessages,
   deleteConversation,
@@ -83,55 +83,29 @@ export function useChat() {
       };
       setMessages((prev) => [...prev, userMsg]);
 
-      // Add placeholder streaming assistant message
-      const streamMsgId = `stream-${Date.now()}`;
-      const streamMsg: Message = {
-        id: streamMsgId,
-        conversation_id: activeConversationId || '',
-        role: 'assistant',
-        content: '',
-        sources: [],
-        created_at: new Date().toISOString(),
-        isStreaming: true,
-      };
-      setMessages((prev) => [...prev, streamMsg]);
-
       try {
-        await sendMessageStream(
+        const response = await sendMessage(
           content,
-          // onToken
-          (token: string) => {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === streamMsgId
-                  ? { ...msg, content: msg.content + token }
-                  : msg
-              )
-            );
-          },
-          // onDone
-          (response) => {
-            if (!activeConversationId) setActiveConversationId(response.conversationId);
-
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === streamMsgId
-                  ? { ...msg, content: response.textResponse, isStreaming: false, sources: response.sources }
-                  : msg
-              )
-            );
-            setSources(response.sources);
-            setIsSending(false);
-            loadConversations();
-          },
           activeConversationId || undefined,
           imageBase64,
           fileAttachment,
           generateImage,
         );
+        if (!activeConversationId) setActiveConversationId(response.conversationId);
+
+        const assistantMsg: Message = {
+          id: `res-${Date.now()}`,
+          conversation_id: response.conversationId,
+          role: 'assistant',
+          content: response.textResponse,
+          sources: response.sources,
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        setSources(response.sources);
+        setIsSending(false);
+        await loadConversations();
       } catch {
-        // Remove the streaming placeholder on error
-        setMessages((prev) => prev.filter((msg) => msg.id !== streamMsgId));
         setError(t.errors.sendMessage);
         setIsSending(false);
       }

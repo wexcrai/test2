@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { User, Bot, FileText, Copy, Check, Volume2, VolumeX } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,13 +12,36 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
-  const isStreaming = message.isStreaming;
   const { t, lang } = useApp();
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [displayedContent, setDisplayedContent] = useState('');
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const copyLabel = lang === 'tr' ? 'Kopyalandi!' : 'Copied!';
   const copyTitle = lang === 'tr' ? 'Kopyala' : 'Copy';
+
+  useEffect(() => {
+    if (isUser || message.content === displayedContent) return;
+
+    setIsAnimating(true);
+    const words = message.content.split(/(\s+)/);
+    let currentIndex = 0;
+    let currentDisplay = '';
+
+    const timer = setInterval(() => {
+      if (currentIndex < words.length) {
+        currentDisplay += words[currentIndex];
+        setDisplayedContent(currentDisplay);
+        currentIndex++;
+      } else {
+        clearInterval(timer);
+        setIsAnimating(false);
+      }
+    }, 50);
+
+    return () => clearInterval(timer);
+  }, [message.content, displayedContent, isUser]);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(message.content);
@@ -45,6 +68,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
     window.speechSynthesis.speak(utterance);
   }, [message.content, isSpeaking]);
 
+  const contentToDisplay = displayedContent || message.content;
+
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
@@ -54,7 +79,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
 
       <div className={`max-w-[75%] space-y-2 ${isUser ? 'items-end' : 'items-start'}`}>
-        {!isUser && !isStreaming && (
+        {!isUser && !isAnimating && (
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
@@ -104,14 +129,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
           ) : (
             <div className="markdown-body">
               <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                {message.content}
+                {contentToDisplay}
               </ReactMarkdown>
-              {isStreaming && <span className="streaming-cursor" />}
             </div>
           )}
         </div>
 
-        {!isUser && message.sources && message.sources.length > 0 && !isStreaming && (
+        {!isUser && message.sources && message.sources.length > 0 && !isAnimating && (
           <div className="space-y-1.5">
             <p className="text-xs text-slate-500 font-medium">{t.chat.sources}</p>
             <div className="space-y-1">
