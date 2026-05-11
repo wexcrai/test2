@@ -38,7 +38,7 @@ function AppContent() {
     createNewChat,
     removeConversation,
   } = useChat();
-  
+
   const isGuest = user?.is_anonymous === true;
   const isAdmin = user?.email === ADMIN_EMAIL;
   const totalMessages = messages.filter(m => m.role === 'user').length;
@@ -53,11 +53,11 @@ function AppContent() {
       setShowGuestWarning(true);
     }
   };
-  
-const handleRename = (id: string, newTitle: string) => {
+
+  const handleRename = (id: string, newTitle: string) => {
     setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
   };
-  
+
   useEffect(() => {
     const {
       data: { subscription },
@@ -97,6 +97,7 @@ const handleRename = (id: string, newTitle: string) => {
         onNew={createNewChat}
         onDelete={removeConversation}
         onClose={() => setSidebarOpen(false)}
+        onRename={handleRename}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
