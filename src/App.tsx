@@ -53,7 +53,11 @@ function AppContent() {
       setShowGuestWarning(true);
     }
   };
-
+  
+const handleRename = (id: string, newTitle: string) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
+  };
+  
   useEffect(() => {
     const {
       data: { subscription },
