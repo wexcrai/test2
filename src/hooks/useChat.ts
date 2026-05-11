@@ -132,6 +132,7 @@ export function useChat() {
 
   return {
     conversations,
+    setConversations,
     activeConversationId,
     messages,
     isLoading,
