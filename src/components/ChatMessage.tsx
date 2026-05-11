@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { User, Bot, FileText, Copy, Check, Volume2, VolumeX } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -17,13 +17,18 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [displayedContent, setDisplayedContent] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
+  const animatedRef = useRef(false);
 
-  const copyLabel = lang === 'tr' ? 'Kopyalandi!' : 'Copied!';
+  const copyLabel = lang === 'tr' ? 'Kopyalandı!' : 'Copied!';
   const copyTitle = lang === 'tr' ? 'Kopyala' : 'Copy';
 
   useEffect(() => {
-    if (isUser || message.content === displayedContent) return;
+    if (isUser || animatedRef.current) {
+      setDisplayedContent(message.content);
+      return;
+    }
 
+    animatedRef.current = true;
     setIsAnimating(true);
     const words = message.content.split(/(\s+)/);
     let currentIndex = 0;
@@ -38,10 +43,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
         clearInterval(timer);
         setIsAnimating(false);
       }
-    }, 50);
+    }, 30);
 
     return () => clearInterval(timer);
-  }, [message.content, displayedContent, isUser]);
+  }, [message.content, isUser]);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(message.content);
@@ -68,7 +73,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     window.speechSynthesis.speak(utterance);
   }, [message.content, isSpeaking]);
 
-  const contentToDisplay = displayedContent || message.content;
+  const contentToDisplay = isUser ? message.content : (displayedContent || message.content);
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -79,7 +84,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
 
       <div className={`max-w-[75%] space-y-2 ${isUser ? 'items-end' : 'items-start'}`}>
-        {!isUser && !isAnimating && (
+        {!isUser && (
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
