@@ -100,11 +100,12 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST") {
       const body = await req.json();
-      const { message, conversationId, imageBase64, fileAttachment } = body as {
+      const { message, conversationId, imageBase64, fileAttachment, generateImage } = body as {
         message: string;
         conversationId?: string;
         imageBase64?: string;
         fileAttachment?: FileAttachment;
+        generateImage?: boolean;
       };
 
       if (!message && !imageBase64 && !fileAttachment) {
@@ -193,6 +194,105 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Use streaming for text responses
+      const useStreaming = !generateImage;
+
+      if (useStreaming) {
+        const groqResponse = await fetch(GROQ_API_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${groqApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages: groqMessages,
+            max_tokens: 2048,
+            temperature: 0.7,
+            stream: true,
+          }),
+        });
+
+        if (!groqResponse.ok) {
+          const errBody = await groqResponse.text();
+          console.error("Groq API error:", errBody);
+          return new Response(JSON.stringify({ error: "AI model request failed" }), {
+            status: 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const reader = groqResponse.body!.getReader();
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        const stream = new ReadableStream({
+          async start(controller) {
+            let fullText = "";
+
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split("\n");
+
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed || !trimmed.startsWith("data: ")) continue;
+                  const data = trimmed.slice(6);
+                  if (data === "[DONE]") continue;
+
+                  try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta?.content;
+                    if (delta) {
+                      fullText += delta;
+                      controller.enqueue(
+                        encoder.encode(`data: ${JSON.stringify({ type: "token", token: delta })}\n\n`)
+                      );
+                    }
+                  } catch {
+                    // skip malformed chunks
+                  }
+                }
+              }
+
+              // Save the complete assistant message to DB
+              await supabase.from("messages").insert({
+                conversation_id: convId,
+                user_id: userId,
+                role: "assistant",
+                content: fullText,
+                sources: [],
+              });
+
+              // Send final event with conversationId
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: "done", conversationId: convId, textResponse: fullText, sources: [] })}\n\n`)
+              );
+            } catch (err) {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: "error", error: err instanceof Error ? err.message : "Stream error" })}\n\n`)
+              );
+            } finally {
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(stream, {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          },
+        });
+      }
+
+      // Non-streaming fallback (for image generation etc.)
       const groqResponse = await fetch(GROQ_API_URL, {
         method: "POST",
         headers: {
@@ -219,7 +319,6 @@ Deno.serve(async (req: Request) => {
       const groqData = await groqResponse.json();
       const textResponse = groqData.choices?.[0]?.message?.content || "No response";
 
-      // Save assistant message
       await supabase
         .from("messages")
         .insert({

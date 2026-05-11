@@ -41,6 +41,7 @@ function AppContent() {
   const isGuest = user?.is_anonymous === true;
   const isAdmin = user?.email === ADMIN_EMAIL;
   const totalMessages = messages.filter(m => m.role === 'user').length;
+  const hasStreamingMessage = messages.some(m => m.isStreaming);
 
   const handleSend = async (content: string, imageBase64?: string, fileAttachment?: any, generateImage?: boolean) => {
     if (isGuest && totalMessages >= GUEST_MESSAGE_LIMIT) {
@@ -181,7 +182,7 @@ function AppContent() {
                 {messages.map((msg) => (
                   <ChatMessage key={msg.id} message={msg} />
                 ))}
-                {isSending && <TypingIndicator />}
+                {isSending && !hasStreamingMessage && <TypingIndicator />}
                 <div ref={messagesEndRef} />
               </div>
             )}

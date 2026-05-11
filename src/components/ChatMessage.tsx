@@ -12,11 +12,12 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const isStreaming = message.isStreaming;
   const { t, lang } = useApp();
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const copyLabel = lang === 'tr' ? 'Kopyalandı!' : 'Copied!';
+  const copyLabel = lang === 'tr' ? 'Kopyalandi!' : 'Copied!';
   const copyTitle = lang === 'tr' ? 'Kopyala' : 'Copy';
 
   const handleCopy = useCallback(() => {
@@ -53,7 +54,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
 
       <div className={`max-w-[75%] space-y-2 ${isUser ? 'items-end' : 'items-start'}`}>
-        {!isUser && (
+        {!isUser && !isStreaming && (
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
@@ -105,11 +106,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
                 {message.content}
               </ReactMarkdown>
+              {isStreaming && <span className="streaming-cursor" />}
             </div>
           )}
         </div>
 
-        {!isUser && message.sources && message.sources.length > 0 && (
+        {!isUser && message.sources && message.sources.length > 0 && !isStreaming && (
           <div className="space-y-1.5">
             <p className="text-xs text-slate-500 font-medium">{t.chat.sources}</p>
             <div className="space-y-1">
