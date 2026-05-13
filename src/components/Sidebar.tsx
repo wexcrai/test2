@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Plus, MessageSquare, Trash2, Pencil, Check } from 'lucide-react';
+import { X, Plus, MessageSquare, Trash2, Pencil, Check, Search } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
 import type { Conversation } from '../lib/api';
@@ -19,6 +19,11 @@ export function Sidebar({ conversations, activeId, isOpen, onSelect, onNew, onDe
   const { t } = useApp();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [search, setSearch] = useState('');
+
+  const filteredConversations = conversations.filter(c =>
+    c.title.toLowerCase().includes(search.toLowerCase())
+  );
 
   const startEdit = (conv: Conversation, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -67,12 +72,35 @@ export function Sidebar({ conversations, activeId, isOpen, onSelect, onNew, onDe
             </button>
           </div>
         </div>
+
+        {conversations.length > 0 && (
+          <div className="px-3 py-2 border-b border-slate-700/50">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700">
+              <Search size={14} className="text-slate-500 shrink-0" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Sohbet ara..."
+                className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="text-slate-500 hover:text-white">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto py-2">
-          {conversations.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-8">{t.chat.noConversations}</p>
+          {filteredConversations.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-8">
+              {search ? 'Sonuç bulunamadı' : t.chat.noConversations}
+            </p>
           ) : (
             <div className="space-y-0.5 px-2">
-              {conversations.map((conv) => (
+              {filteredConversations.map((conv) => (
                 <div
                   key={conv.id}
                   className={`group flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
