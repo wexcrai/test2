@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, AlertCircle, LogOut, Settings, Shield } from 'lucide-react';
+import { Menu, AlertCircle, LogOut, Settings, Shield, Download } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
@@ -64,6 +64,19 @@ function AppContent() {
     await handleSendOriginal(lastUserMsg.content, lastUserMsg.image_base64 || undefined, lastUserMsg.file_attachment || undefined);
   };
 
+  const handleExport = () => {
+    if (messages.length === 0) return;
+    const title = conversations.find(c => c.id === activeConversationId)?.title || 'Sohbet';
+    const content = messages.map(msg => `${msg.role === 'user' ? '👤 Sen' : '🤖 Zenkus AI'}: ${msg.content}`).join('\n\n');
+    const blob = new Blob([`${title}\n${'='.repeat(title.length)}\n\n${content}`], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     const {
       data: { subscription },
@@ -126,6 +139,15 @@ function AppContent() {
             <span className="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded-lg">
               Misafir ({totalMessages}/{GUEST_MESSAGE_LIMIT})
             </span>
+          )}
+          {messages.length > 0 && (
+            <button
+              onClick={handleExport}
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Sohbeti indir"
+            >
+              <Download size={18} />
+            </button>
           )}
           {isAdmin && (
             <button
