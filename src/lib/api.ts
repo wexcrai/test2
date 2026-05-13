@@ -61,6 +61,9 @@ export async function sendMessage(
   if (fileAttachment) body.fileAttachment = fileAttachment;
   if (generateImage) body.generateImage = true;
 
+  const customPrompt = localStorage.getItem('system-prompt');
+  if (customPrompt) body.systemPrompt = customPrompt;
+
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers,
