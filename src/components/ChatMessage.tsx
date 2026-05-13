@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { User, Bot, FileText, Copy, Check, Volume2, VolumeX, RefreshCw } from 'lucide-react';
+import { User, Bot, FileText, Copy, Check, Volume2, VolumeX, RefreshCw, Pencil, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -9,16 +9,19 @@ import type { Message } from '../lib/api';
 interface ChatMessageProps {
   message: Message;
   onRegenerate?: () => void;
+  onEdit?: (newContent: string) => void;
   isLast?: boolean;
 }
 
-export function ChatMessage({ message, onRegenerate, isLast }: ChatMessageProps) {
+export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const { t, lang } = useApp();
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [displayedContent, setDisplayedContent] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
   const animatedRef = useRef(false);
 
   const copyLabel = lang === 'tr' ? 'Kopyalandı!' : 'Copied!';
@@ -75,6 +78,13 @@ export function ChatMessage({ message, onRegenerate, isLast }: ChatMessageProps)
     window.speechSynthesis.speak(utterance);
   }, [message.content, isSpeaking]);
 
+  const handleEditSave = () => {
+    if (editContent.trim() && onEdit) {
+      onEdit(editContent.trim());
+    }
+    setIsEditing(false);
+  };
+
   const contentToDisplay = isUser ? message.content : (displayedContent || message.content);
 
   return (
@@ -85,7 +95,7 @@ export function ChatMessage({ message, onRegenerate, isLast }: ChatMessageProps)
         </div>
       )}
 
-      <div className={`max-w-[75%] space-y-2 ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`max-w-[75%] space-y-2 ${isUser ? 'items-end flex flex-col' : 'items-start'}`}>
         {!isUser && (
           <div className="flex items-center gap-2">
             <button
@@ -116,6 +126,18 @@ export function ChatMessage({ message, onRegenerate, isLast }: ChatMessageProps)
             )}
           </div>
         )}
+
+        {isUser && isLast && onEdit && !isEditing && (
+          <button
+            onClick={() => { setIsEditing(true); setEditContent(message.content); }}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors self-end"
+            title="Düzenle"
+          >
+            <Pencil size={12} />
+            <span>Düzenle</span>
+          </button>
+        )}
+
         <div
           className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
             isUser
@@ -142,7 +164,33 @@ export function ChatMessage({ message, onRegenerate, isLast }: ChatMessageProps)
             </div>
           )}
           {isUser ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            isEditing ? (
+              <div className="space-y-2">
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full bg-emerald-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleEditSave}
+                    className="px-3 py-1 bg-white text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-50 transition-colors"
+                  >
+                    Gönder
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="px-3 py-1 bg-emerald-700 text-white rounded-lg text-xs hover:bg-emerald-800 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            )
           ) : (
             <div className="markdown-body">
               <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
