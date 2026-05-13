@@ -3,52 +3,50 @@
 
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  
+  <!-- SEO Temelleri -->
+  <title>Zenkus AI | Yapay Zeka Destekli Sohbet Asistanı</title>
+  <meta name="description" content="Zenkus AI, gelişmiş yapay zeka teknolojisiyle sorularınıza anında yanıt veren, projelerinizde size yardımcı olan akıllı sohbet asistanıdır." />
+  <meta name="keywords" content="yapay zeka, ai, sohbet botu, Zenkus AI, asistan, teknoloji" />
+  <meta name="author" content="Zenkus" />
+  <meta name="robots" content="index, follow" />
 
-  <meta name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- Google Search Console Doğrulaması (Kodu aldığında content kısmına yapıştırabilirsin) -->
+  <!-- <meta name="google-site-verification" content="BURAYA_GOOGLE_KODUNU_YAPISTIR" /> -->
 
-  <title>Zenkus AI</title>
-
-  <meta name="description"
-    content="Zenkus yapay zeka destekli sohbet asistanı" />
-
+  <!-- PWA ve Mobil Ayarlar -->
   <link rel="manifest" href="/manifest.json" />
-
-  <link rel="icon"
-    type="image/png"
-    sizes="192x192"
-    href="/pwa-192x192.png" />
-
-  <link rel="apple-touch-icon"
-    href="/pwa-192x192.png" />
-
+  <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+  <link rel="apple-touch-icon" href="/pwa-192x192.png" />
   <meta name="theme-color" content="#059669" />
-
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Zenkus AI" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="Zenkus AI" />
 
-  <meta name="apple-mobile-web-app-status-bar-style"
-    content="black-translucent" />
+  <!-- Sosyal Medya Önizlemeleri (Open Graph / Facebook) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://zenkus-ai.netlify.app/" />
+  <meta property="og:title" content="Zenkus AI - Geleceğin Yapay Zeka Deneyimi" />
+  <meta property="og:description" content="Sorular sorun, kod yazdırın veya sadece sohbet edin. Zenkus AI her an yanınızda." />
+  <meta property="og:image" content="/pwa-192x192.png" />
 
-  <meta name="apple-mobile-web-app-title"
-    content="Zenkus AI" />
+  <!-- Twitter Önizlemesi -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Zenkus AI" />
+  <meta name="twitter:description" content="Yapay zeka destekli yeni nesil sohbet asistanı." />
+  <meta name="twitter:image" content="/pwa-192x192.png" />
 
-  <meta name="mobile-web-app-capable"
-    content="yes" />
-
-  <meta name="application-name"
-    content="Zenkus AI" />
-
-  <meta property="og:title"
-    content="Zenkus AI" />
-
-  <meta property="og:description"
-    content="Zenkus yapay zeka destekli sohbet asistanı" />
-
-  <meta name="twitter:card"
-    content="summary_large_image" />
+  <!-- Canonical Link (Tekrarlanan içerik sorununu önler) -->
+  <link rel="canonical" href="https://zenkus-ai.netlify.app/" />
 </head>
 
 <body>
+  <!-- Erişilebilirlik için ana başlık (Botlar için önemli) -->
+  <h1 style="display:none;">Zenkus AI - Yapay Zeka Asistanı</h1>
+
   <div id="root"></div>
 
   <script type="module" src="/src/main.tsx"></script>
