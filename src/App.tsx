@@ -58,6 +58,12 @@ function AppContent() {
     setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
   };
 
+  const handleRegenerate = async () => {
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    if (!lastUserMsg) return;
+    await handleSendOriginal(lastUserMsg.content, lastUserMsg.image_base64 || undefined, lastUserMsg.file_attachment || undefined);
+  };
+
   useEffect(() => {
     const {
       data: { subscription },
@@ -184,8 +190,13 @@ function AppContent() {
               <WelcomeScreen />
             ) : (
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((msg) => (
-                  <ChatMessage key={msg.id} message={msg} />
+                {messages.map((msg, index) => (
+                  <ChatMessage
+                    key={msg.id}
+                    message={msg}
+                    isLast={index === messages.length - 1}
+                    onRegenerate={msg.role === 'assistant' && index === messages.length - 1 ? handleRegenerate : undefined}
+                  />
                 ))}
                 {isSending && <TypingIndicator />}
                 <div ref={messagesEndRef} />
