@@ -64,6 +64,10 @@ function AppContent() {
     await handleSendOriginal(lastUserMsg.content, lastUserMsg.image_base64 || undefined, lastUserMsg.file_attachment || undefined);
   };
 
+  const handleEdit = async (newContent: string) => {
+    await handleSendOriginal(newContent);
+  };
+
   const handleExport = () => {
     if (messages.length === 0) return;
     const title = conversations.find(c => c.id === activeConversationId)?.title || 'Sohbet';
@@ -218,6 +222,7 @@ function AppContent() {
                     message={msg}
                     isLast={index === messages.length - 1}
                     onRegenerate={msg.role === 'assistant' && index === messages.length - 1 ? handleRegenerate : undefined}
+                    onEdit={msg.role === 'user' && index === messages.length - 1 ? handleEdit : undefined}
                   />
                 ))}
                 {isSending && <TypingIndicator />}
