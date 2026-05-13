@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Sun, Moon, Globe, Lock, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Sun, Moon, Globe, Lock, Trash2, AlertTriangle, Bot } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../contexts/AppContext';
 
@@ -16,8 +16,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState(() => localStorage.getItem('system-prompt') || '');
+  const [promptSaved, setPromptSaved] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleSavePrompt = () => {
+    localStorage.setItem('system-prompt', systemPrompt);
+    setPromptSaved(true);
+    setTimeout(() => setPromptSaved(false), 2000);
+  };
 
   const handleChangePassword = async () => {
     setPasswordMsg(null);
@@ -80,6 +88,39 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         <div className="px-6 py-5 space-y-6 max-h-[70vh] overflow-y-auto">
+
+          {/* System Prompt */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-3">
+              <Bot size={16} className="text-purple-400" />
+              AI Karakter Ayarı
+            </label>
+            <textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder="Örnek: Sen bir tarih öğretmenisin. Tüm cevaplarını tarihi olaylarla ilişkilendir."
+              rows={3}
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition-colors resize-none"
+            />
+            <div className="flex items-center gap-3 mt-2">
+              <button
+                onClick={handleSavePrompt}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors"
+              >
+                {promptSaved ? '✓ Kaydedildi!' : 'Kaydet'}
+              </button>
+              {systemPrompt && (
+                <button
+                  onClick={() => { setSystemPrompt(''); localStorage.removeItem('system-prompt'); }}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-400 text-sm hover:text-white transition-colors"
+                >
+                  Sıfırla
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-2">AI'nın nasıl davranacağını özelleştir. Boş bırakırsan varsayılan davranış kullanılır.</p>
+          </div>
+
           {/* Theme */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-3">
