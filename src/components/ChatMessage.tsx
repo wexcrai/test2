@@ -127,16 +127,16 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
           </div>
         )}
 
-        {isUser && isLast && onEdit && !isEditing && (
-          <button
-            onClick={() => { setIsEditing(true); setEditContent(message.content); }}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors self-end"
-            title="Düzenle"
-          >
-            <Pencil size={12} />
-            <span>Düzenle</span>
-          </button>
-        )}
+       {isUser && isLast && onEdit && !isEditing && (
+  <button
+    onClick={() => { setIsEditing(true); setEditContent(message.content); }}
+    className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors self-end opacity-100"
+    title="Düzenle"
+  >
+    <Pencil size={12} />
+    <span>Düzenle</span>
+  </button>
+)}
 
         <div
           className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
