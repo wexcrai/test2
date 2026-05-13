@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { User, Bot, FileText, Copy, Check, Volume2, VolumeX } from 'lucide-react';
+import { User, Bot, FileText, Copy, Check, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -8,9 +8,11 @@ import type { Message } from '../lib/api';
 
 interface ChatMessageProps {
   message: Message;
+  onRegenerate?: () => void;
+  isLast?: boolean;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onRegenerate, isLast }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const { t, lang } = useApp();
   const [copied, setCopied] = useState(false);
@@ -102,6 +104,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
               {isSpeaking ? <VolumeX size={12} /> : <Volume2 size={12} />}
               <span>{isSpeaking ? 'Durdur' : 'Sesli oku'}</span>
             </button>
+            {isLast && onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                title="Yeniden oluştur"
+              >
+                <RefreshCw size={12} />
+                <span>Yeniden oluştur</span>
+              </button>
+            )}
           </div>
         )}
         <div
