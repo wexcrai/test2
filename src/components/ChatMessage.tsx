@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { User, Bot, FileText, Copy, Check, Volume2, VolumeX, RefreshCw, Pencil, X } from 'lucide-react';
+import { User, Bot, FileText, Copy, Check, Volume2, VolumeX, RefreshCw, Pencil, X, ThumbsUp, ThumbsDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -22,6 +22,7 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
   const [isAnimating, setIsAnimating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [liked, setLiked] = useState<'up' | 'down' | null>(null);
   const animatedRef = useRef(false);
 
   const copyLabel = lang === 'tr' ? 'Kopyalandı!' : 'Copied!';
@@ -124,19 +125,33 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
                 <span>Yeniden oluştur</span>
               </button>
             )}
+            <button
+              onClick={() => setLiked(liked === 'up' ? null : 'up')}
+              className={`flex items-center gap-1 text-xs transition-colors ${liked === 'up' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
+              title="Beğen"
+            >
+              <ThumbsUp size={12} />
+            </button>
+            <button
+              onClick={() => setLiked(liked === 'down' ? null : 'down')}
+              className={`flex items-center gap-1 text-xs transition-colors ${liked === 'down' ? 'text-red-400' : 'text-slate-500 hover:text-slate-300'}`}
+              title="Beğenme"
+            >
+              <ThumbsDown size={12} />
+            </button>
           </div>
         )}
 
-       {isUser && isLast && onEdit && !isEditing && (
-  <button
-    onClick={() => { setIsEditing(true); setEditContent(message.content); }}
-    className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors self-end opacity-100"
-    title="Düzenle"
-  >
-    <Pencil size={12} />
-    <span>Düzenle</span>
-  </button>
-)}
+        {isUser && isLast && onEdit && !isEditing && (
+          <button
+            onClick={() => { setIsEditing(true); setEditContent(message.content); }}
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors self-end opacity-100"
+            title="Düzenle"
+          >
+            <Pencil size={12} />
+            <span>Düzenle</span>
+          </button>
+        )}
 
         <div
           className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
