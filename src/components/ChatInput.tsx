@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, ImagePlus, X, FileText, Paperclip, Mic, MicOff, Sparkles, Plus } from 'lucide-react';
+import { Send, ImagePlus, X, FileText, Paperclip, Mic, MicOff, Sparkles, Plus, Zap, Brain } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { extractTextFromPDF, readFileAsText } from '../lib/pdf';
 
@@ -9,8 +9,10 @@ export interface FileAttachment {
   content: string;
 }
 
+export type ModelType = 'fast' | 'smart';
+
 interface ChatInputProps {
-  onSend: (content: string, imageBase64?: string, fileAttachment?: FileAttachment, generateImage?: boolean) => void;
+  onSend: (content: string, imageBase64?: string, fileAttachment?: FileAttachment, generateImage?: boolean, model?: ModelType) => void;
   disabled: boolean;
 }
 
@@ -26,6 +28,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [imageMode, setImageMode] = useState(false);
   const [showWarning, setShowWarning] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [model, setModel] = useState<ModelType>('smart');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -147,7 +150,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const handleSubmit = () => {
     const trimmed = input.trim();
     if ((!trimmed && !imageBase64 && !fileAttachment) || disabled || isProcessingFile) return;
-    onSend(trimmed, imageBase64 || undefined, fileAttachment || undefined, imageMode);
+    onSend(trimmed, imageBase64 || undefined, fileAttachment || undefined, imageMode, model);
     setInput('');
     setImageBase64(null);
     setImagePreview(null);
@@ -256,6 +259,21 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
               </div>
             )}
           </div>
+
+          {/* Model seçici */}
+          <button
+            onClick={() => setModel(model === 'smart' ? 'fast' : 'smart')}
+            disabled={disabled}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl transition-colors disabled:opacity-40 border text-xs font-medium ${
+              model === 'smart'
+                ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30'
+                : 'bg-yellow-600/20 text-yellow-400 border-yellow-500/30'
+            }`}
+            title={model === 'smart' ? 'Akıllı mod — daha iyi cevap' : 'Hızlı mod — daha hızlı cevap'}
+          >
+            {model === 'smart' ? <Brain size={14} /> : <Zap size={14} />}
+            {model === 'smart' ? 'Akıllı' : 'Hızlı'}
+          </button>
 
           {/* Mikrofon */}
           <button
