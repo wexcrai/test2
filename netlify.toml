@@ -1,9 +1,11 @@
 [[headers]]
-for = "/*"
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob: wss:; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; connect-src 'self' https: wss: data: blob:;"
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
 
-[headers.values]
-Content-Security-Policy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:;"
-
-[build]
-command = "npx vite build"
-publish = "dist"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
