@@ -2,6 +2,17 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../contexts/AppContext';
 
+const PROJECT_SYSTEM_PROMPT = `Sen Zenkus AI'sın ama şu an özel bir moddasın. 
+Kullanıcı sana Zenkus AI projesi hakkında sorular soruyor ve sen bu projeyi yapan kişinin asistanı gibi davranıyorsun.
+Şu bilgileri kullan:
+- Proje adı: Zenkus AI (zenkus-ai.netlify.app)
+- Kullanılan teknolojiler: React, TypeScript, Tailwind CSS, Supabase, Groq AI, Netlify
+- Özellikler: Yapay zeka sohbet, sesli mesaj, görsel oluşturma, PDF okuma, web arama, kullanıcı sistemi
+- Kullanılan API'ler: Groq API (yapay zeka), Tavily API (web arama), Pollinations AI (görsel)
+- Site Netlify'da yayında, veritabanı Supabase'de
+- Proje tek başına geliştirildi, Claude AI yardımıyla kodlandı
+Sorulara kısa, anlaşılır ve Türkçe cevap ver. Konuşma sınavı havasında ol.`;
+
 export function AuthScreen() {
   const { t } = useApp();
   const [email, setEmail] = useState('');
@@ -11,6 +22,46 @@ export function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [showWarning, setShowWarning] = useState(true);
+  const [projectMode, setProjectMode] = useState(false);
+  const [projectInput, setProjectInput] = useState('');
+  const [projectMessages, setProjectMessages] = useState<{role: string, content: string}[]>([
+    { role: 'assistant', content: 'Merhaba! Ben Zenkus AI projesi hakkında sorularını yanıtlamak için buradayım. Ne öğrenmek istiyorsun?' }
+  ]);
+  const [projectLoading, setProjectLoading] = useState(false);
+
+  const handleProjectSend = async () => {
+    if (!projectInput.trim() || projectLoading) return;
+    const userMsg = projectInput.trim();
+    setProjectInput('');
+    setProjectMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setProjectLoading(true);
+
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: PROJECT_SYSTEM_PROMPT },
+            ...projectMessages.map(m => ({ role: m.role, content: m.content })),
+            { role: 'user', content: userMsg }
+          ],
+          max_tokens: 512,
+        }),
+      });
+      const data = await res.json();
+      const reply = data.choices?.[0]?.message?.content || 'Cevap alınamadı.';
+      setProjectMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    } catch {
+      setProjectMessages(prev => [...prev, { role: 'assistant', content: 'Bir hata oluştu, tekrar dene.' }]);
+    } finally {
+      setProjectLoading(false);
+    }
+  };
 
   const checkBan = async (email: string): Promise<boolean> => {
     const { data } = await supabase
@@ -86,6 +137,70 @@ export function AuthScreen() {
     );
   }
 
+  if (projectMode) {
+    return (
+      <div className="h-screen flex flex-col bg-slate-950">
+        <div className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-slate-700/50 bg-slate-900/80">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-sm font-medium text-slate-200">🎓 Proje Tanıtım Modu</span>
+          </div>
+          <button
+            onClick={() => setProjectMode(false)}
+            className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800 transition-colors"
+          >
+            ← Geri
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {projectMessages.map((msg, i) => (
+            <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                msg.role === 'user'
+                  ? 'bg-emerald-600 text-white rounded-br-md'
+                  : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'
+              }`}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {projectLoading && (
+            <div className="flex gap-3 justify-start">
+              <div className="bg-slate-800 border border-slate-700/50 px-4 py-3 rounded-2xl rounded-bl-md">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{animationDelay:'0ms'}}/>
+                  <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{animationDelay:'150ms'}}/>
+                  <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{animationDelay:'300ms'}}/>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 border-t border-slate-700/50 bg-slate-900/80 p-4">
+          <div className="flex gap-2 max-w-3xl mx-auto">
+            <input
+              type="text"
+              value={projectInput}
+              onChange={(e) => setProjectInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleProjectSend()}
+              placeholder="Proje hakkında bir şey sor..."
+              className="flex-1 px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500"
+            />
+            <button
+              onClick={handleProjectSend}
+              disabled={projectLoading || !projectInput.trim()}
+              className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-40"
+            >
+              Gönder
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex items-center justify-center bg-slate-950">
       <div className="bg-slate-900 p-8 rounded-2xl border border-slate-700 w-full max-w-md">
@@ -121,9 +236,16 @@ export function AuthScreen() {
         <button
           onClick={handleGuest}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors mb-4 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors mb-3 disabled:opacity-50"
         >
           👤 Misafir olarak devam et
+        </button>
+
+        <button
+          onClick={() => setProjectMode(true)}
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-400 font-medium transition-colors mb-4"
+        >
+          🎓 Proje
         </button>
 
         <div className="flex items-center gap-3 mb-4">
