@@ -53,6 +53,7 @@ export async function sendMessage(
   imageBase64?: string,
   fileAttachment?: FileAttachmentData,
   generateImage?: boolean,
+  model?: 'fast' | 'smart',
 ): Promise<ChatResponse> {
   const headers = await getHeaders();
   const body: Record<string, unknown> = { message };
@@ -60,6 +61,7 @@ export async function sendMessage(
   if (imageBase64) body.imageBase64 = imageBase64;
   if (fileAttachment) body.fileAttachment = fileAttachment;
   if (generateImage) body.generateImage = true;
+  if (model) body.model = model;
 
   const customPrompt = localStorage.getItem('system-prompt');
   if (customPrompt) body.systemPrompt = customPrompt;
