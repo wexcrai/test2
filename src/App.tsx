@@ -11,6 +11,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { useChat } from './hooks/useChat';
 import { supabase } from './lib/supabase';
 import { AppProvider, useApp } from './contexts/AppContext';
+import type { ModelType } from './components/ChatInput';
 
 const GUEST_MESSAGE_LIMIT = 12;
 const ADMIN_EMAIL = 'ilyastekkan@gmail.com';
@@ -43,12 +44,12 @@ function AppContent() {
   const isAdmin = user?.email === ADMIN_EMAIL;
   const totalMessages = messages.filter(m => m.role === 'user').length;
 
-  const handleSend = async (content: string, imageBase64?: string, fileAttachment?: any, generateImage?: boolean) => {
+  const handleSend = async (content: string, imageBase64?: string, fileAttachment?: any, generateImage?: boolean, model?: ModelType) => {
     if (isGuest && totalMessages >= GUEST_MESSAGE_LIMIT) {
       setShowGuestWarning(true);
       return;
     }
-    await handleSendOriginal(content, imageBase64, fileAttachment, generateImage);
+    await handleSendOriginal(content, imageBase64, fileAttachment, generateImage, model);
     if (isGuest && totalMessages + 1 >= GUEST_MESSAGE_LIMIT) {
       setShowGuestWarning(true);
     }
