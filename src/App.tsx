@@ -11,6 +11,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { useChat } from './hooks/useChat';
 import { supabase } from './lib/supabase';
 import { AppProvider, useApp } from './contexts/AppContext';
+import { requestNotificationPermission, onForegroundMessage } from './firebase';
 import type { ModelType } from './components/ChatInput';
 
 const GUEST_MESSAGE_LIMIT = 12;
@@ -23,6 +24,7 @@ function AppContent() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [showGuestWarning, setShowGuestWarning] = useState(false);
+  const [notification, setNotification] = useState<{title: string, body: string} | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { t } = useApp();
 
@@ -95,6 +97,25 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    if (user && !isGuest) {
+      requestNotificationPermission().then(async (token) => {
+        if (token) {
+          await supabase.from('push_tokens').upsert({ token, user_id: user.id }, { onConflict: 'token' });
+        }
+      });
+
+      const unsubscribe = onForegroundMessage((payload) => {
+        setNotification({
+          title: payload.notification?.title || 'Bildirim',
+          body: payload.notification?.body || ''
+        });
+        setTimeout(() => setNotification(null), 5000);
+      });
+      return () => unsubscribe();
+    }
+  }, [user, isGuest]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isSending]);
 
@@ -113,6 +134,14 @@ function AppContent() {
 
   return (
     <div className="h-screen flex bg-slate-950 text-slate-100 overflow-hidden">
+
+      {notification && (
+        <div className="fixed top-4 right-4 z-[100] bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl max-w-sm animate-pulse">
+          <p className="text-white font-medium text-sm">{notification.title}</p>
+          <p className="text-slate-400 text-xs mt-1">{notification.body}</p>
+        </div>
+      )}
+
       <Sidebar
         conversations={conversations}
         activeId={activeConversationId}
