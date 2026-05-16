@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { User, Bot, FileText, Copy, Check, Volume2, VolumeX, RefreshCw, Pencil, X, ThumbsUp, ThumbsDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -18,41 +18,12 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
   const { t, lang } = useApp();
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [displayedContent, setDisplayedContent] = useState('');
-  const [isAnimating, setIsAnimating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [liked, setLiked] = useState<'up' | 'down' | null>(null);
-  const animatedRef = useRef(false);
 
   const copyLabel = lang === 'tr' ? 'Kopyalandı!' : 'Copied!';
   const copyTitle = lang === 'tr' ? 'Kopyala' : 'Copy';
-
-  useEffect(() => {
-    if (isUser || animatedRef.current) {
-      setDisplayedContent(message.content);
-      return;
-    }
-
-    animatedRef.current = true;
-    setIsAnimating(true);
-    const words = message.content.split(/(\s+)/);
-    let currentIndex = 0;
-    let currentDisplay = '';
-
-    const timer = setInterval(() => {
-      if (currentIndex < words.length) {
-        currentDisplay += words[currentIndex];
-        setDisplayedContent(currentDisplay);
-        currentIndex++;
-      } else {
-        clearInterval(timer);
-        setIsAnimating(false);
-      }
-    }, 30);
-
-    return () => clearInterval(timer);
-  }, [message.content, isUser]);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(message.content);
@@ -85,8 +56,6 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
     }
     setIsEditing(false);
   };
-
-  const contentToDisplay = isUser ? message.content : (displayedContent || message.content);
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -209,13 +178,13 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
           ) : (
             <div className="markdown-body">
               <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                {contentToDisplay}
+                {message.content}
               </ReactMarkdown>
             </div>
           )}
         </div>
 
-        {!isUser && message.sources && message.sources.length > 0 && !isAnimating && (
+        {!isUser && message.sources && message.sources.length > 0 && (
           <div className="space-y-1.5">
             <p className="text-xs text-slate-500 font-medium">{t.chat.sources}</p>
             <div className="space-y-1">
