@@ -104,42 +104,28 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
     setNotifLog(prev => [...prev, `📤 Bildirim gönderiliyor...`]);
 
     try {
-      const { data: tokens } = await supabase.from('push_tokens').select('token');
-      if (!tokens || tokens.length === 0) {
-        setNotifLog(prev => [...prev, '❌ Kayıtlı token yok, hiç kullanıcı bildirim izni vermemiş.']);
-        return;
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ title: notifTitle, body: notifBody }),
+        }
+      );
 
-      setNotifLog(prev => [...prev, `📱 ${tokens.length} kullanıcıya gönderiliyor...`]);
-
-      const res = await fetch('https://fcm.googleapis.com/v1/projects/zenkus-ai/messages:send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_FIREBASE_API_KEY}`,
-        },
-        body: JSON.stringify({
-          message: {
-            notification: { title: notifTitle, body: notifBody },
-            webpush: {
-              notification: {
-                title: notifTitle,
-                body: notifBody,
-                icon: '/pwa-192x192.png',
-              }
-            },
-            token: tokens[0].token,
-          }
-        }),
-      });
+      const data = await res.json();
 
       if (res.ok) {
-        setNotifLog(prev => [...prev, `✅ Bildirim gönderildi! (${tokens.length} kullanıcı)`]);
+        setNotifLog(prev => [...prev, `✅ Bildirim gönderildi! (${data.sent} kullanıcı)`]);
         setNotifTitle('');
         setNotifBody('');
       } else {
-        const err = await res.json();
-        setNotifLog(prev => [...prev, `❌ Hata: ${JSON.stringify(err)}`]);
+        setNotifLog(prev => [...prev, `❌ Hata: ${data.error}`]);
       }
     } catch (err: any) {
       setNotifLog(prev => [...prev, `❌ Hata: ${err.message}`]);
@@ -147,7 +133,6 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       setNotifSending(false);
     }
   };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-3xl max-h-[85vh] flex flex-col">
