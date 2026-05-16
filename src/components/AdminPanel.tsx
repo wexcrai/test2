@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { X, MessageSquare, ChevronDown, ChevronUp, Terminal, Bell } from 'lucide-react';
+import { X, MessageSquare, ChevronDown, ChevronUp, Terminal, Bell, BarChart2 } from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -15,7 +15,7 @@ interface AdminPanelProps {
 
 export function AdminPanel({ onClose }: AdminPanelProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeTab, setActiveTab] = useState<'conversations' | 'commands' | 'notifications'>('conversations');
+  const [activeTab, setActiveTab] = useState<'stats' | 'conversations' | 'commands' | 'notifications'>('stats');
   const [loading, setLoading] = useState(true);
   const [expandedConv, setExpandedConv] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, any[]>>({});
@@ -25,6 +25,12 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   const [notifBody, setNotifBody] = useState('');
   const [notifSending, setNotifSending] = useState(false);
   const [notifLog, setNotifLog] = useState<string[]>([]);
+  const [stats, setStats] = useState({
+    totalConversations: 0,
+    totalMessages: 0,
+    totalTokens: 0,
+    bannedUsers: 0,
+  });
   const commandInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -39,6 +45,26 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
         .select('*')
         .order('created_at', { ascending: false });
       setConversations(convs || []);
+
+      const { count: msgCount } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: tokenCount } = await supabase
+        .from('push_tokens')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: bannedCount } = await supabase
+        .from('banned_users')
+        .select('*', { count: 'exact', head: true });
+
+      setStats({
+        totalConversations: convs?.length || 0,
+        totalMessages: msgCount || 0,
+        totalTokens: tokenCount || 0,
+        bannedUsers: bannedCount || 0,
+      });
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -63,10 +89,8 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   const handleCommand = async () => {
     const cmd = command.trim();
     if (!cmd) return;
-
     setCommandLog(prev => [...prev, `> ${cmd}`]);
     setCommand('');
-
     const parts = cmd.split(' ');
     const action = parts[0].toLowerCase();
     const target = parts[1];
@@ -99,13 +123,10 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       setNotifLog(prev => [...prev, '❌ Başlık ve mesaj boş olamaz!']);
       return;
     }
-
     setNotifSending(true);
     setNotifLog(prev => [...prev, `📤 Bildirim gönderiliyor...`]);
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification`,
         {
@@ -117,9 +138,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
           body: JSON.stringify({ title: notifTitle, body: notifBody }),
         }
       );
-
       const data = await res.json();
-
       if (res.ok) {
         setNotifLog(prev => [...prev, `✅ Bildirim gönderildi! (${data.sent} kullanıcı)`]);
         setNotifTitle('');
@@ -133,6 +152,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       setNotifSending(false);
     }
   };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-3xl max-h-[85vh] flex flex-col">
@@ -143,24 +163,31 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
           </button>
         </div>
 
-        <div className="flex gap-2 px-6 py-3 border-b border-slate-700">
+        <div className="flex gap-2 px-6 py-3 border-b border-slate-700 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 ${activeTab === 'stats' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            <BarChart2 size={16} />
+            İstatistikler
+          </button>
           <button
             onClick={() => setActiveTab('conversations')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'conversations' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 ${activeTab === 'conversations' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
             <MessageSquare size={16} />
             Sohbetler
           </button>
           <button
             onClick={() => setActiveTab('commands')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'commands' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 ${activeTab === 'commands' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
             <Terminal size={16} />
             Komutlar
           </button>
           <button
             onClick={() => setActiveTab('notifications')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'notifications' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 ${activeTab === 'notifications' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
             <Bell size={16} />
             Bildirim
@@ -168,7 +195,32 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'conversations' ? (
+          {activeTab === 'stats' ? (
+            loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+                  <p className="text-slate-400 text-xs mb-1">Toplam Sohbet</p>
+                  <p className="text-3xl font-bold text-white">{stats.totalConversations}</p>
+                </div>
+                <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+                  <p className="text-slate-400 text-xs mb-1">Toplam Mesaj</p>
+                  <p className="text-3xl font-bold text-white">{stats.totalMessages}</p>
+                </div>
+                <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+                  <p className="text-slate-400 text-xs mb-1">Bildirim İzni Veren</p>
+                  <p className="text-3xl font-bold text-emerald-400">{stats.totalTokens}</p>
+                </div>
+                <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+                  <p className="text-slate-400 text-xs mb-1">Banlı Kullanıcı</p>
+                  <p className="text-3xl font-bold text-red-400">{stats.bannedUsers}</p>
+                </div>
+              </div>
+            )
+          ) : activeTab === 'conversations' ? (
             loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-6 h-6 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
