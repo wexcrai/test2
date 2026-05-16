@@ -20,6 +20,7 @@ export function useChat() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [streamingContent, setStreamingContent] = useState('');
   const initialLoadDone = useRef(false);
 
   const loadConversations = useCallback(async () => {
@@ -62,6 +63,7 @@ export function useChat() {
     setMessages([]);
     setSources([]);
     setError(null);
+    setStreamingContent('');
   }, []);
 
   const handleSendMessage = useCallback(
@@ -70,6 +72,7 @@ export function useChat() {
       setIsSending(true);
       setError(null);
       setSources([]);
+      setStreamingContent('');
 
       const userMsg: Message = {
         id: `temp-${Date.now()}`,
@@ -84,6 +87,8 @@ export function useChat() {
       setMessages((prev) => [...prev, userMsg]);
 
       try {
+        let streamedText = '';
+
         const response = await sendMessage(
           content,
           activeConversationId || undefined,
@@ -91,24 +96,31 @@ export function useChat() {
           fileAttachment,
           generateImage,
           model,
+          generateImage ? undefined : (chunk: string) => {
+            streamedText += chunk;
+            setStreamingContent(streamedText);
+          },
         );
+
         if (!activeConversationId) setActiveConversationId(response.conversationId);
 
         const assistantMsg: Message = {
           id: `res-${Date.now()}`,
           conversation_id: response.conversationId,
           role: 'assistant',
-          content: response.textResponse,
-          sources: response.sources,
+          content: response.textResponse || streamedText,
+          sources: response.sources || [],
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
-        setSources(response.sources);
+        setSources(response.sources || []);
+        setStreamingContent('');
         setIsSending(false);
         await loadConversations();
       } catch {
         setError(t.errors.sendMessage);
         setIsSending(false);
+        setStreamingContent('');
       }
     },
     [activeConversationId, isSending, loadConversations, t],
@@ -123,6 +135,7 @@ export function useChat() {
           setActiveConversationId(null);
           setMessages([]);
           setSources([]);
+          setStreamingContent('');
         }
       } catch {
         setError(t.errors.deleteConversation);
@@ -140,6 +153,7 @@ export function useChat() {
     isSending,
     error,
     sources,
+    streamingContent,
     sendMessage: handleSendMessage,
     selectConversation,
     createNewChat,
