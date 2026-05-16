@@ -36,6 +36,7 @@ function AppContent() {
     isLoading,
     isSending,
     error,
+    streamingContent,
     sendMessage: handleSendOriginal,
     selectConversation,
     createNewChat,
@@ -117,7 +118,7 @@ function AppContent() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isSending]);
+  }, [messages, isSending, streamingContent]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -136,7 +137,7 @@ function AppContent() {
     <div className="h-screen flex bg-slate-950 text-slate-100 overflow-hidden">
 
       {notification && (
-        <div className="fixed top-4 right-4 z-[100] bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl max-w-sm animate-pulse">
+        <div className="fixed top-4 right-4 z-[100] bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl max-w-sm">
           <p className="text-white font-medium text-sm">{notification.title}</p>
           <p className="text-slate-400 text-xs mt-1">{notification.body}</p>
         </div>
@@ -255,7 +256,21 @@ function AppContent() {
                     onEdit={msg.role === 'user' && index === messages.length - 1 ? handleEdit : undefined}
                   />
                 ))}
-                {isSending && <TypingIndicator />}
+                {isSending && (
+                  streamingContent ? (
+                    <div className="flex gap-3 justify-start">
+                      <div className="shrink-0 w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center">
+                        <div className="w-4 h-4 text-emerald-400">🤖</div>
+                      </div>
+                      <div className="max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md">
+                        {streamingContent}
+                        <span className="inline-block w-1 h-4 bg-emerald-400 ml-1 animate-pulse" />
+                      </div>
+                    </div>
+                  ) : (
+                    <TypingIndicator />
+                  )
+                )}
                 <div ref={messagesEndRef} />
               </div>
             )}
