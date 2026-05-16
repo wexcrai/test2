@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
+    "firebase": "^10.7.0",
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.344.0",
     "pdfjs-dist": "^4.4.168",
@@ -20,7 +21,6 @@
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1"
-    "firebase": "^10.7.0",
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
