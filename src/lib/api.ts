@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getMemories, buildMemoryPrompt, extractAndSaveMemories } from './memoryService';
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -57,6 +58,12 @@ export async function sendMessage(
   onChunk?: (chunk: string) => void,
 ): Promise<ChatResponse> {
   const headers = await getHeaders();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+
   const body: Record<string, unknown> = { message };
   if (conversationId) body.conversationId = conversationId;
   if (imageBase64) body.imageBase64 = imageBase64;
@@ -65,8 +72,19 @@ export async function sendMessage(
   if (model) body.model = model;
   if (onChunk) body.stream = true;
 
+  // Sistem prompt + hafıza
   const customPrompt = localStorage.getItem('system-prompt');
-  if (customPrompt) body.systemPrompt = customPrompt;
+  if (userId) {
+    try {
+      const memories = await getMemories(userId);
+      const memoryPrompt = buildMemoryPrompt(memories);
+      body.systemPrompt = (customPrompt || '') + memoryPrompt;
+    } catch {
+      if (customPrompt) body.systemPrompt = customPrompt;
+    }
+  } else if (customPrompt) {
+    body.systemPrompt = customPrompt;
+  }
 
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
@@ -83,15 +101,13 @@ export async function sendMessage(
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '';
-    let conversationId = '';
+    let responseConversationId = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
       const chunk = decoder.decode(value, { stream: true });
       const lines = chunk.split('\n');
-
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
@@ -103,21 +119,39 @@ export async function sendMessage(
               onChunk(parsed.text);
             }
             if (parsed.conversationId) {
-              conversationId = parsed.conversationId;
+              responseConversationId = parsed.conversationId;
             }
           } catch {}
         }
       }
     }
 
+    // Arka planda hafıza çıkar
+    if (userId && message && fullText) {
+      const groqKey = import.meta.env.VITE_GROQ_API_KEY;
+      if (groqKey) {
+        extractAndSaveMemories(userId, message, fullText, groqKey).catch(() => {});
+      }
+    }
+
     return {
-      conversationId,
+      conversationId: responseConversationId,
       textResponse: fullText,
       sources: [],
     };
   }
 
-  return res.json();
+  const result = await res.json();
+
+  // Streaming olmayan yanıtta da hafıza çıkar
+  if (userId && message && result.textResponse) {
+    const groqKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (groqKey) {
+      extractAndSaveMemories(userId, message, result.textResponse, groqKey).catch(() => {});
+    }
+  }
+
+  return result;
 }
 
 export async function getConversations(): Promise<Conversation[]> {
