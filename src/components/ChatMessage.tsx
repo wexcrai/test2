@@ -132,14 +132,16 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
     setIsEditing(false);
   };
 
-  const components = {
+ const components = {
     code({ node, inline, className, children, ...props }: any) {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
-      const code = String(children).replace(/\n$/, '');
+      const code = Array.isArray(children) 
+        ? children.join('') 
+        : String(children).replace(/\n$/, '');
 
-      if (!inline && language) {
-        return <CodeBlock language={language} code={code} />;
+      if (!inline && (language || code.includes('\n'))) {
+        return <CodeBlock language={language || 'text'} code={code} />;
       }
       return (
         <code className="bg-slate-700 px-1.5 py-0.5 rounded text-emerald-400 text-xs font-mono" {...props}>
@@ -148,7 +150,7 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
       );
     },
   };
-
+  
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
