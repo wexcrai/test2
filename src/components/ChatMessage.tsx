@@ -27,13 +27,14 @@ function CodeBlock({ language, code }: CodeBlockProps) {
     setRunning(true);
     setOutput(null);
     try {
+      const lang = language === 'js' ? 'javascript' : language === 'ts' ? 'typescript' : language;
       const res = await fetch('https://emkc.org/api/v2/piston/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          language: language === 'js' ? 'javascript' : language,
+          language: lang,
           version: '*',
-          files: [{ content: code }],
+          files: [{ name: 'main', content: code }],
         }),
       });
       const data = await res.json();
@@ -59,37 +60,12 @@ function CodeBlock({ language, code }: CodeBlockProps) {
       <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-700">
         <span className="text-xs text-slate-400 font-mono">{language || 'kod'}</span>
         <div className="flex items-center gap-2">
-          <button
-            onClick={copyCode}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-white transition-colors"
-          >
+          <button onClick={copyCode} className="flex items-center gap-1 text-xs text-slate-500 hover:text-white transition-colors">
             {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
             <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
           </button>
           {canRun && (
-            <button
-              onClick={runCode}
-              disabled={running}
-              className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {running ? <Loader size={12} className="animate-spin" /> : <Play size={12} />}
-              <span>{running ? 'Çalışıyor...' : 'Çalıştır'}</span>
-            </button>
-          )}
-        </div>
-      </div>
-      <pre className="p-4 overflow-x-auto bg-slate-950 text-sm">
-        <code>{code}</code>
-      </pre>
-      {output !== null && (
-        <div className="border-t border-slate-700 bg-slate-900 p-4">
-          <p className="text-xs text-slate-500 mb-2">Çıktı:</p>
-          <pre className="text-sm text-emerald-400 font-mono whitespace-pre-wrap">{output}</pre>
-        </div>
-      )}
-    </div>
-  );
-}
+            <button onClick={runCode} disabled={running} className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-5
 
 export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessageProps) {
   const isUser = message.role === 'user';
@@ -133,15 +109,13 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
   };
 
  const components = {
-    code({ node, inline, className, children, ...props }: any) {
+    code({ inline, className, children, ...props }: any) {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
-      const code = Array.isArray(children) 
-        ? children.join('') 
-        : String(children).replace(/\n$/, '');
+      const code = String(children).replace(/\n$/, '');
 
-      if (!inline && (language || code.includes('\n'))) {
-        return <CodeBlock language={language || 'text'} code={code} />;
+      if (!inline && code.includes('\n')) {
+        return <CodeBlock language={language} code={code} />;
       }
       return (
         <code className="bg-slate-700 px-1.5 py-0.5 rounded text-emerald-400 text-xs font-mono" {...props}>
