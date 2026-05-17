@@ -65,7 +65,25 @@ function CodeBlock({ language, code }: CodeBlockProps) {
             <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
           </button>
           {canRun && (
-            <button onClick={runCode} disabled={running} className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-5
+            <button onClick={runCode} disabled={running} className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded-lg transition-colors disabled:opacity-50">
+              {running ? <Loader size={12} className="animate-spin" /> : <Play size={12} />}
+              <span>{running ? 'Çalışıyor...' : 'Çalıştır'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+      <pre className="p-4 overflow-x-auto bg-slate-950 text-sm text-slate-200 font-mono whitespace-pre">
+        {code}
+      </pre>
+      {output !== null && (
+        <div className="border-t border-slate-700 bg-slate-900 p-4">
+          <p className="text-xs text-slate-500 mb-2">Çıktı:</p>
+          <pre className="text-sm text-emerald-400 font-mono whitespace-pre-wrap">{output}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessageProps) {
   const isUser = message.role === 'user';
@@ -108,7 +126,7 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
     setIsEditing(false);
   };
 
- const components = {
+  const components = {
     code({ inline, className, children, ...props }: any) {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
@@ -118,13 +136,13 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
         return <CodeBlock language={language} code={code} />;
       }
       return (
-        <code className="bg-slate-700 px-1.5 py-0.5 rounded text-emerald-400 text-xs font-mono" {...props}>
+        <code style={{background:'#1e293b', padding:'2px 6px', borderRadius:'4px', color:'#34d399', fontSize:'12px', fontFamily:'monospace'}} {...props}>
           {children}
         </code>
       );
     },
   };
-  
+
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
@@ -136,67 +154,37 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
       <div className={`max-w-[75%] space-y-2 ${isUser ? 'items-end flex flex-col' : 'items-start'}`}>
         {!isUser && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-              title={copyTitle}
-            >
+            <button onClick={handleCopy} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors" title={copyTitle}>
               {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
               <span className={copied ? 'text-emerald-400' : ''}>{copied ? copyLabel : copyTitle}</span>
             </button>
-            <button
-              onClick={handleSpeak}
-              className={`flex items-center gap-1 text-xs transition-colors ${isSpeaking ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
-              title={isSpeaking ? 'Durdur' : 'Sesli oku'}
-            >
+            <button onClick={handleSpeak} className={`flex items-center gap-1 text-xs transition-colors ${isSpeaking ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`} title={isSpeaking ? 'Durdur' : 'Sesli oku'}>
               {isSpeaking ? <VolumeX size={12} /> : <Volume2 size={12} />}
               <span>{isSpeaking ? 'Durdur' : 'Sesli oku'}</span>
             </button>
             {isLast && onRegenerate && (
-              <button
-                onClick={onRegenerate}
-                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-                title="Yeniden oluştur"
-              >
+              <button onClick={onRegenerate} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors" title="Yeniden oluştur">
                 <RefreshCw size={12} />
                 <span>Yeniden oluştur</span>
               </button>
             )}
-            <button
-              onClick={() => setLiked(liked === 'up' ? null : 'up')}
-              className={`flex items-center gap-1 text-xs transition-colors ${liked === 'up' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
-              title="Beğen"
-            >
+            <button onClick={() => setLiked(liked === 'up' ? null : 'up')} className={`flex items-center gap-1 text-xs transition-colors ${liked === 'up' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`} title="Beğen">
               <ThumbsUp size={12} />
             </button>
-            <button
-              onClick={() => setLiked(liked === 'down' ? null : 'down')}
-              className={`flex items-center gap-1 text-xs transition-colors ${liked === 'down' ? 'text-red-400' : 'text-slate-500 hover:text-slate-300'}`}
-              title="Beğenme"
-            >
+            <button onClick={() => setLiked(liked === 'down' ? null : 'down')} className={`flex items-center gap-1 text-xs transition-colors ${liked === 'down' ? 'text-red-400' : 'text-slate-500 hover:text-slate-300'}`} title="Beğenme">
               <ThumbsDown size={12} />
             </button>
           </div>
         )}
 
         {isUser && isLast && onEdit && !isEditing && (
-          <button
-            onClick={() => { setIsEditing(true); setEditContent(message.content); }}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors self-end opacity-100"
-            title="Düzenle"
-          >
+          <button onClick={() => { setIsEditing(true); setEditContent(message.content); }} className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors self-end opacity-100" title="Düzenle">
             <Pencil size={12} />
             <span>Düzenle</span>
           </button>
         )}
 
-        <div
-          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-            isUser
-              ? 'bg-emerald-600 text-white rounded-br-md'
-              : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'
-          }`}
-        >
+        <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${isUser ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'}`}>
           {isUser && message.image_base64 && (
             <img src={message.image_base64} alt="Uploaded" className="max-h-48 rounded-lg mb-2 border border-white/10" />
           )}
@@ -205,29 +193,17 @@ export function ChatMessage({ message, onRegenerate, onEdit, isLast }: ChatMessa
               <FileText size={16} className="shrink-0 text-emerald-200" />
               <div className="min-w-0">
                 <p className="text-xs font-medium text-white truncate">{message.file_attachment.name}</p>
-                <p className="text-xs text-emerald-200/70">
-                  {message.file_attachment.type === 'application/pdf' ? 'PDF' : 'Text'}
-                </p>
+                <p className="text-xs text-emerald-200/70">{message.file_attachment.type === 'application/pdf' ? 'PDF' : 'Text'}</p>
               </div>
             </div>
           )}
           {isUser ? (
             isEditing ? (
               <div className="space-y-2">
-                <textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full bg-emerald-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
-                  rows={3}
-                  autoFocus
-                />
+                <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full bg-emerald-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" rows={3} autoFocus />
                 <div className="flex gap-2">
-                  <button onClick={handleEditSave} className="px-3 py-1 bg-white text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-50 transition-colors">
-                    Gönder
-                  </button>
-                  <button onClick={() => setIsEditing(false)} className="px-3 py-1 bg-emerald-700 text-white rounded-lg text-xs hover:bg-emerald-800 transition-colors">
-                    <X size={12} />
-                  </button>
+                  <button onClick={handleEditSave} className="px-3 py-1 bg-white text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-50 transition-colors">Gönder</button>
+                  <button onClick={() => setIsEditing(false)} className="px-3 py-1 bg-emerald-700 text-white rounded-lg text-xs hover:bg-emerald-800 transition-colors"><X size={12} /></button>
                 </div>
               </div>
             ) : (
