@@ -24,7 +24,7 @@ async function extractAndSaveMemories(
   userMessage: string,
   aiResponse: string,
 ) {
-const prompt = `Aşağıdaki konuşmada KULLANICI hakkında hatırlanmaya değer kişisel bilgiler var mı?
+  const prompt = `Aşağıdaki konuşmada KULLANICI hakkında hatırlanmaya değer kişisel bilgiler var mı?
 
 Kabul edilenler: kullanıcının kendi ismi, mesleği, şehri, dil tercihi, hobileri, kişisel tercihleri.
 Kesinlikle ALMA: AI'ın cevapları, genel bilgiler, ünlü kişiler, "bilgi bulunmamaktadır" gibi ifadeler, tek seferlik sorular.
@@ -58,7 +58,8 @@ Eğer kullanıcı hakkında kişisel bir bilgi yoksa boş array döndür: []`;
 
     let extracted: { memory: string; category: string }[] = [];
     try {
-      extracted = JSON.parse(text);
+      const clean = text.replace(/```json|```/g, "").trim();
+      extracted = JSON.parse(clean);
     } catch {
       return;
     }
@@ -70,11 +71,12 @@ Eğer kullanıcı hakkında kişisel bir bilgi yoksa boş array döndür: []`;
       .select("memory")
       .eq("user_id", userId);
 
-   const existingTexts = (existing || [])
-  .filter((m: any) => m?.memory)
-  .map((m: any) => m.memory.toLowerCase());
+    const existingTexts = (existing || [])
+      .filter((m: any) => m?.memory)
+      .map((m: any) => m.memory.toLowerCase());
+
     const newMemories = extracted.filter(
-      (e) => !existingTexts.some((ex: string) => ex.includes(e.memory.toLowerCase()))
+      (e) => e?.memory && !existingTexts.some((ex: string) => ex.includes(e.memory.toLowerCase()))
     );
 
     if (!newMemories.length) return;
@@ -248,10 +250,9 @@ Deno.serve(async (req: Request) => {
         ? FAST_MODEL
         : TEXT_MODEL;
 
-     const finalSystemPrompt =
-  systemPrompt ||
-  "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver.";
-      
+      const defaultPrompt = "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver. Soruları doğrudan ve eksiksiz yanıtla.";
+      const finalSystemPrompt = (systemPrompt && systemPrompt.trim()) ? systemPrompt : defaultPrompt;
+
       const groqMessages: any[] = [
         { role: "system", content: finalSystemPrompt },
       ];
@@ -288,7 +289,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Streaming
       if (stream) {
         const groqResponse = await fetch(GROQ_API_URL, {
           method: "POST",
@@ -378,7 +378,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Normal yanıt
       const groqResponse = await fetch(GROQ_API_URL, {
         method: "POST",
         headers: {
