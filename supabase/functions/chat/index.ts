@@ -65,7 +65,6 @@ Eğer hatırlanacak bir şey yoksa boş array döndür: []`;
 
     if (!extracted.length) return;
 
-    // Mevcut hafızalarla çakışma kontrolü
     const { data: existing } = await supabase
       .from("user_memories")
       .select("memory")
@@ -174,13 +173,22 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST") {
       const body = await req.json();
-      const { message, conversationId, imageBase64, fileAttachment, generateImage, model: modelPref, systemPrompt, stream } = body as {
+      const {
+        message,
+        conversationId,
+        imageBase64,
+        fileAttachment,
+        generateImage,
+        model: modelPref,
+        systemPrompt,
+        stream,
+      } = body as {
         message: string;
         conversationId?: string;
         imageBase64?: string;
         fileAttachment?: FileAttachment;
         generateImage?: boolean;
-        model?: 'fast' | 'smart';
+        model?: "fast" | "smart";
         systemPrompt?: string;
         stream?: boolean;
       };
@@ -195,7 +203,11 @@ Deno.serve(async (req: Request) => {
       let convId = conversationId;
 
       if (!convId) {
-        const titleText = message ? message.slice(0, 50) : (fileAttachment ? fileAttachment.name : "Image Chat");
+        const titleText = message
+          ? message.slice(0, 50)
+          : fileAttachment
+          ? fileAttachment.name
+          : "Image Chat";
         const { data: conv, error: convError } = await supabase
           .from("conversations")
           .insert({ user_id: userId, title: titleText })
@@ -212,7 +224,6 @@ Deno.serve(async (req: Request) => {
           .eq("user_id", userId);
       }
 
-      // Save user message
       await supabase.from("messages").insert({
         conversation_id: convId,
         user_id: userId,
@@ -222,7 +233,6 @@ Deno.serve(async (req: Request) => {
         file_attachment: fileAttachment || null,
       });
 
-      // Fetch conversation history
       const { data: history } = await supabase
         .from("messages")
         .select("role, content, image_base64, file_attachment")
@@ -232,20 +242,19 @@ Deno.serve(async (req: Request) => {
       const hasImage = !!imageBase64;
       const selectedModel = hasImage
         ? VISION_MODEL
-        : modelPref === 'fast'
+        : modelPref === "fast"
         ? FAST_MODEL
         : TEXT_MODEL;
 
-      // Sistem prompt
-      const finalSystemPrompt = systemPrompt ||
+      const finalSystemPrompt =
+        systemPrompt ||
         "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver.";
 
-      // Build messages for Groq
       const groqMessages: any[] = [
         { role: "system", content: finalSystemPrompt },
       ];
 
-      for (const msg of (history || [])) {
+      for (const msg of history || []) {
         if (msg.role === "user" && msg.image_base64) {
           const content: any[] = [];
           if (msg.content) content.push({ type: "text", text: msg.content });
@@ -277,7 +286,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Streaming yanıt
+      // Streaming
       if (stream) {
         const groqResponse = await fetch(GROQ_API_URL, {
           method: "POST",
@@ -303,7 +312,7 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        let fullText = '';
+        let fullText = "";
         const encoder = new TextEncoder();
 
         const readable = new ReadableStream({
@@ -311,7 +320,6 @@ Deno.serve(async (req: Request) => {
             const reader = groqResponse.body!.getReader();
             const decoder = new TextDecoder();
 
-            // conversationId'yi hemen gönder
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ conversationId: convId })}\n\n`)
             );
@@ -321,15 +329,15 @@ Deno.serve(async (req: Request) => {
               if (done) break;
 
               const chunk = decoder.decode(value, { stream: true });
-              const lines = chunk.split('\n');
+              const lines = chunk.split("\n");
 
               for (const line of lines) {
-                if (line.startsWith('data: ')) {
+                if (line.startsWith("data: ")) {
                   const data = line.slice(6);
-                  if (data === '[DONE]') continue;
+                  if (data === "[DONE]") continue;
                   try {
                     const parsed = JSON.parse(data);
-                    const text = parsed.choices?.[0]?.delta?.content || '';
+                    const text = parsed.choices?.[0]?.delta?.content || "";
                     if (text) {
                       fullText += text;
                       controller.enqueue(
@@ -341,7 +349,6 @@ Deno.serve(async (req: Request) => {
               }
             }
 
-            // Assistant mesajını kaydet
             await supabase.from("messages").insert({
               conversation_id: convId,
               user_id: userId,
@@ -350,7 +357,6 @@ Deno.serve(async (req: Request) => {
               sources: [],
             });
 
-            // Arka planda hafıza çıkar (await bekleme)
             if (message && fullText) {
               extractAndSaveMemories(supabase, groqApiKey, userId, message, fullText);
             }
@@ -370,7 +376,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Normal (non-streaming) yanıt
+      // Normal yanıt
       const groqResponse = await fetch(GROQ_API_URL, {
         method: "POST",
         headers: {
@@ -405,7 +411,6 @@ Deno.serve(async (req: Request) => {
         sources: [],
       });
 
-      // Arka planda hafıza çıkar
       if (message && textResponse) {
         extractAndSaveMemories(supabase, groqApiKey, userId, message, textResponse);
       }
