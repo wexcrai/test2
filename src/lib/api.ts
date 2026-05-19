@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { getMemories, buildMemoryPrompt, extractAndSaveMemories } from './memoryService';
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -58,12 +57,6 @@ export async function sendMessage(
   onChunk?: (chunk: string) => void,
 ): Promise<ChatResponse> {
   const headers = await getHeaders();
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const userId = session?.user?.id;
-
   const body: Record<string, unknown> = { message };
   if (conversationId) body.conversationId = conversationId;
   if (imageBase64) body.imageBase64 = imageBase64;
@@ -71,38 +64,22 @@ export async function sendMessage(
   if (generateImage) body.generateImage = true;
   if (model) body.model = model;
   if (onChunk) body.stream = true;
-
-  // Sistem prompt + hafıza
   const customPrompt = localStorage.getItem('system-prompt');
-  if (userId) {
-    try {
-      const memories = await getMemories(userId);
-      const memoryPrompt = buildMemoryPrompt(memories);
-      body.systemPrompt = (customPrompt || '') + memoryPrompt;
-    } catch {
-      if (customPrompt) body.systemPrompt = customPrompt;
-    }
-  } else if (customPrompt) {
-    body.systemPrompt = customPrompt;
-  }
-
+  if (customPrompt) body.systemPrompt = customPrompt;
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
   });
-
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Mesaj gonderilemedi.');
   }
-
   if (onChunk && res.body) {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '';
     let responseConversationId = '';
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -125,33 +102,13 @@ export async function sendMessage(
         }
       }
     }
-
-    // Arka planda hafıza çıkar
-    if (userId && message && fullText) {
-      const groqKey = import.meta.env.VITE_GROQ_API_KEY;
-      if (groqKey) {
-        extractAndSaveMemories(userId, message, fullText, groqKey).catch(() => {});
-      }
-    }
-
     return {
       conversationId: responseConversationId,
       textResponse: fullText,
       sources: [],
     };
   }
-
-  const result = await res.json();
-
-  // Streaming olmayan yanıtta da hafıza çıkar
-  if (userId && message && result.textResponse) {
-    const groqKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (groqKey) {
-      extractAndSaveMemories(userId, message, result.textResponse, groqKey).catch(() => {});
-    }
-  }
-
-  return result;
+  return res.json();
 }
 
 export async function getConversations(): Promise<Conversation[]> {
