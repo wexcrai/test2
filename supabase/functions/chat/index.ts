@@ -9,7 +9,6 @@ const corsHeaders = {
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const VISION_MODEL = "llama-3.2-11b-vision-preview";
 const TEXT_MODEL = "llama-3.3-70b-versatile";
-const FAST_MODEL = "llama-3.1-8b-instant";
 
 interface FileAttachment {
   name: string;
@@ -101,24 +100,12 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST") {
       const body = await req.json();
-      const {
-        message,
-        conversationId,
-        imageBase64,
-        fileAttachment,
-        generateImage,
-        model: modelPref,
-        systemPrompt,
-        stream,
-      } = body as {
+      const { message, conversationId, imageBase64, fileAttachment, generateImage } = body as {
         message: string;
         conversationId?: string;
         imageBase64?: string;
         fileAttachment?: FileAttachment;
         generateImage?: boolean;
-        model?: "fast" | "smart";
-        systemPrompt?: string;
-        stream?: boolean;
       };
 
       if (!message && !imageBase64 && !fileAttachment) {
@@ -131,11 +118,7 @@ Deno.serve(async (req: Request) => {
       let convId = conversationId;
 
       if (!convId) {
-        const titleText = message
-          ? message.slice(0, 50)
-          : fileAttachment
-          ? fileAttachment.name
-          : "Image Chat";
+        const titleText = message ? message.slice(0, 50) : (fileAttachment ? fileAttachment.name : "Image Chat");
         const { data: conv, error: convError } = await supabase
           .from("conversations")
           .insert({ user_id: userId, title: titleText })
@@ -152,6 +135,7 @@ Deno.serve(async (req: Request) => {
           .eq("user_id", userId);
       }
 
+      // Save user message
       await supabase.from("messages").insert({
         conversation_id: convId,
         user_id: userId,
@@ -161,6 +145,7 @@ Deno.serve(async (req: Request) => {
         file_attachment: fileAttachment || null,
       });
 
+      // Fetch conversation history for context
       const { data: history } = await supabase
         .from("messages")
         .select("role, content, image_base64, file_attachment")
@@ -168,23 +153,17 @@ Deno.serve(async (req: Request) => {
         .order("created_at", { ascending: true });
 
       const hasImage = !!imageBase64;
-      const selectedModel = hasImage
-        ? VISION_MODEL
-        : modelPref === "fast"
-        ? FAST_MODEL
-        : TEXT_MODEL;
+      const model = hasImage ? VISION_MODEL : TEXT_MODEL;
 
-      const defaultPrompt = "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver. Soruları doğrudan ve eksiksiz yanıtla.";
-      const finalSystemPrompt = (systemPrompt && systemPrompt.trim()) ? systemPrompt : defaultPrompt;
+      // Build messages for Groq API
+      const groqMessages: any[] = [];
 
-      const groqMessages: any[] = [
-        { role: "system", content: finalSystemPrompt },
-      ];
-
-      for (const msg of history || []) {
+      for (const msg of (history || [])) {
         if (msg.role === "user" && msg.image_base64) {
           const content: any[] = [];
-          if (msg.content) content.push({ type: "text", text: msg.content });
+          if (msg.content) {
+            content.push({ type: "text", text: msg.content });
+          }
           content.push({
             type: "image_url",
             image_url: {
@@ -196,9 +175,11 @@ Deno.serve(async (req: Request) => {
           groqMessages.push({ role: "user", content });
         } else if (msg.role === "user" && msg.file_attachment) {
           const file = msg.file_attachment as FileAttachment;
-          const combinedText = msg.content
-            ? `${msg.content}\n\n--- Dosya: ${file.name} ---\n${file.content}`
-            : `Dosya: ${file.name}\n${file.content}`;
+          const fileContent = file.content || "";
+          const userText = msg.content || "";
+          const combinedText = userText
+            ? `${userText}\n\n--- Dosya: ${file.name} ---\n${fileContent}`
+            : `Dosya: ${file.name}\n${fileContent}`;
           groqMessages.push({ role: "user", content: combinedText });
         } else {
           groqMessages.push({ role: msg.role, content: msg.content });
@@ -213,93 +194,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Streaming
-      if (stream) {
-        const groqResponse = await fetch(GROQ_API_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${groqApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: groqMessages,
-            max_tokens: 2048,
-            temperature: 0.7,
-            stream: true,
-          }),
-        });
-
-        if (!groqResponse.ok) {
-          const errBody = await groqResponse.text();
-          console.error("Groq API error:", errBody);
-          return new Response(JSON.stringify({ error: "AI model request failed" }), {
-            status: 502,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        let fullText = "";
-        const encoder = new TextEncoder();
-
-        const readable = new ReadableStream({
-          async start(controller) {
-            const reader = groqResponse.body!.getReader();
-            const decoder = new TextDecoder();
-
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ conversationId: convId })}\n\n`)
-            );
-
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-
-              const chunk = decoder.decode(value, { stream: true });
-              const lines = chunk.split("\n");
-
-              for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                  const data = line.slice(6);
-                  if (data === "[DONE]") continue;
-                  try {
-                    const parsed = JSON.parse(data);
-                    const text = parsed.choices?.[0]?.delta?.content || "";
-                    if (text) {
-                      fullText += text;
-                      controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
-                      );
-                    }
-                  } catch {}
-                }
-              }
-            }
-
-            await supabase.from("messages").insert({
-              conversation_id: convId,
-              user_id: userId,
-              role: "assistant",
-              content: fullText,
-              sources: [],
-            });
-
-            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-            controller.close();
-          },
-        });
-
-        return new Response(readable, {
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-          },
-        });
-      }
-
-      // Normal yanıt
       const groqResponse = await fetch(GROQ_API_URL, {
         method: "POST",
         headers: {
@@ -307,7 +201,7 @@ Deno.serve(async (req: Request) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: selectedModel,
+          model,
           messages: groqMessages,
           max_tokens: 2048,
           temperature: 0.7,
@@ -326,17 +220,28 @@ Deno.serve(async (req: Request) => {
       const groqData = await groqResponse.json();
       const textResponse = groqData.choices?.[0]?.message?.content || "No response";
 
-      await supabase.from("messages").insert({
-        conversation_id: convId,
-        user_id: userId,
-        role: "assistant",
-        content: textResponse,
-        sources: [],
-      });
+      // Save assistant message
+      await supabase
+        .from("messages")
+        .insert({
+          conversation_id: convId,
+          user_id: userId,
+          role: "assistant",
+          content: textResponse,
+          sources: [],
+        })
+        .select("id")
+        .single();
 
       return new Response(
-        JSON.stringify({ conversationId: convId, textResponse, sources: [] }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          conversationId: convId,
+          textResponse,
+          sources: [],
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
@@ -348,7 +253,10 @@ Deno.serve(async (req: Request) => {
     console.error("Edge function error:", err);
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });
