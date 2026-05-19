@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { X, Plus, MessageSquare, Trash2, Pencil, Check, Search } from 'lucide-react';
+import { X, Plus, MessageSquare, Trash2, Pencil, Check, Search, Brain } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
+import { MemoryModal } from './MemoryModal';
 import type { Conversation } from '../lib/api';
 
 interface SidebarProps {
@@ -20,6 +21,7 @@ export function Sidebar({ conversations, activeId, isOpen, onSelect, onNew, onDe
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [search, setSearch] = useState('');
+  const [memoryOpen, setMemoryOpen] = useState(false);
 
   const filteredConversations = conversations.filter(c =>
     c.title.toLowerCase().includes(search.toLowerCase())
@@ -57,6 +59,13 @@ export function Sidebar({ conversations, activeId, isOpen, onSelect, onNew, onDe
         <div className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-slate-700/50">
           <h2 className="text-sm font-semibold text-slate-200">{t.chat.conversations}</h2>
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => setMemoryOpen(true)}
+              className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
+              title="Hafıza"
+            >
+              <Brain size={18} />
+            </button>
             <button
               onClick={onNew}
               className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
@@ -158,7 +167,20 @@ export function Sidebar({ conversations, activeId, isOpen, onSelect, onNew, onDe
             </div>
           )}
         </div>
+
+        {/* Alt kısım - Hafıza butonu */}
+        <div className="shrink-0 px-3 py-3 border-t border-slate-700/50">
+          <button
+            onClick={() => setMemoryOpen(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors text-sm"
+          >
+            <Brain size={16} />
+            <span>Hafızam</span>
+          </button>
+        </div>
       </aside>
+
+      <MemoryModal isOpen={memoryOpen} onClose={() => setMemoryOpen(false)} />
     </>
   );
 }
