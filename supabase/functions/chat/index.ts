@@ -246,10 +246,10 @@ Deno.serve(async (req: Request) => {
         ? FAST_MODEL
         : TEXT_MODEL;
 
-      const finalSystemPrompt =
-        systemPrompt ||
-        "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver.";
-
+     const finalSystemPrompt =
+  systemPrompt ||
+  "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver.";
+      
       const groqMessages: any[] = [
         { role: "system", content: finalSystemPrompt },
       ];
