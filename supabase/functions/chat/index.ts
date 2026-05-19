@@ -156,7 +156,12 @@ Deno.serve(async (req: Request) => {
       const model = hasImage ? VISION_MODEL : TEXT_MODEL;
 
       // Build messages for Groq API
-      const groqMessages: any[] = [];
+    const groqMessages: any[] = [
+  {
+    role: "system",
+    content: "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver."
+  }
+];
 
       for (const msg of (history || [])) {
         if (msg.role === "user" && msg.image_base64) {
