@@ -72,13 +72,15 @@ export async function sendMessage(
   if (model) body.model = model;
   if (onChunk) body.stream = true;
 
-  // Sistem prompt + hafıza
   const customPrompt = localStorage.getItem('system-prompt');
+
   if (userId) {
     try {
       const memories = await getMemories(userId);
       const memoryPrompt = buildMemoryPrompt(memories);
-      body.systemPrompt = (customPrompt || '') + memoryPrompt;
+      if (customPrompt || memoryPrompt) {
+        body.systemPrompt = (customPrompt || '') + memoryPrompt;
+      }
     } catch {
       if (customPrompt) body.systemPrompt = customPrompt;
     }
