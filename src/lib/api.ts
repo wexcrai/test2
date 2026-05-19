@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { getMemories, buildMemoryPrompt } from './memoryService';
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -59,11 +58,6 @@ export async function sendMessage(
 ): Promise<ChatResponse> {
   const headers = await getHeaders();
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const userId = session?.user?.id;
-
   const body: Record<string, unknown> = { message };
   if (conversationId) body.conversationId = conversationId;
   if (imageBase64) body.imageBase64 = imageBase64;
@@ -73,20 +67,7 @@ export async function sendMessage(
   if (onChunk) body.stream = true;
 
   const customPrompt = localStorage.getItem('system-prompt');
-
-  if (userId) {
-    try {
-      const memories = await getMemories(userId);
-      const memoryPrompt = buildMemoryPrompt(memories);
-      if (customPrompt || memoryPrompt) {
-        body.systemPrompt = (customPrompt || '') + memoryPrompt;
-      }
-    } catch {
-      if (customPrompt) body.systemPrompt = customPrompt;
-    }
-  } else if (customPrompt) {
-    body.systemPrompt = customPrompt;
-  }
+  if (customPrompt) body.systemPrompt = customPrompt;
 
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
