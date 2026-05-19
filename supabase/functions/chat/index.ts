@@ -24,12 +24,12 @@ async function extractAndSaveMemories(
   userMessage: string,
   aiResponse: string,
 ) {
-  const prompt = `Aşağıdaki konuşmadan kullanıcı hakkında hatırlanmaya değer bilgileri çıkar.
-Sadece gerçekten önemli bilgileri al: isim, meslek, şehir, dil tercihi, hobiler, sık kullandığı araçlar, önemli tercihler.
-Sıradan veya tek seferlik şeyleri alma.
+const prompt = `Aşağıdaki konuşmada KULLANICI hakkında hatırlanmaya değer kişisel bilgiler var mı?
 
-Kullanıcı: ${userMessage}
-AI: ${aiResponse}
+Kabul edilenler: kullanıcının kendi ismi, mesleği, şehri, dil tercihi, hobileri, kişisel tercihleri.
+Kesinlikle ALMA: AI'ın cevapları, genel bilgiler, ünlü kişiler, "bilgi bulunmamaktadır" gibi ifadeler, tek seferlik sorular.
+
+Kullanıcı mesajı: ${userMessage}
 
 Sadece JSON array döndür, başka hiçbir şey yazma:
 [
@@ -37,7 +37,7 @@ Sadece JSON array döndür, başka hiçbir şey yazma:
   ...
 ]
 
-Eğer hatırlanacak bir şey yoksa boş array döndür: []`;
+Eğer kullanıcı hakkında kişisel bir bilgi yoksa boş array döndür: []`;
 
   try {
     const response = await fetch(GROQ_API_URL, {
