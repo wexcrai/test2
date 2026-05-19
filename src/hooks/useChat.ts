@@ -21,7 +21,6 @@ export function useChat() {
   const [error, setError] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
-  const streamedTextRef = useRef('');
   const initialLoadDone = useRef(false);
 
   const loadConversations = useCallback(async () => {
@@ -65,7 +64,6 @@ export function useChat() {
     setSources([]);
     setError(null);
     setStreamingContent('');
-    streamedTextRef.current = '';
   }, []);
 
   const handleSendMessage = useCallback(
@@ -75,7 +73,6 @@ export function useChat() {
       setError(null);
       setSources([]);
       setStreamingContent('');
-      streamedTextRef.current = '';
 
       const userMsg: Message = {
         id: `temp-${Date.now()}`,
@@ -90,6 +87,8 @@ export function useChat() {
       setMessages((prev) => [...prev, userMsg]);
 
       try {
+        let streamedText = '';
+
         const response = await sendMessage(
           content,
           activeConversationId || undefined,
@@ -98,8 +97,8 @@ export function useChat() {
           generateImage,
           model,
           generateImage ? undefined : (chunk: string) => {
-            streamedTextRef.current += chunk;
-            setStreamingContent(streamedTextRef.current);
+            streamedText += chunk;
+            setStreamingContent(streamedText);
           },
         );
 
@@ -109,21 +108,19 @@ export function useChat() {
           id: `res-${Date.now()}`,
           conversation_id: response.conversationId,
           role: 'assistant',
-          content: response.textResponse || streamedTextRef.current,
+          content: response.textResponse || streamedText,
           sources: response.sources || [],
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
         setSources(response.sources || []);
         setStreamingContent('');
-        streamedTextRef.current = '';
         setIsSending(false);
         await loadConversations();
       } catch {
         setError(t.errors.sendMessage);
         setIsSending(false);
         setStreamingContent('');
-        streamedTextRef.current = '';
       }
     },
     [activeConversationId, isSending, loadConversations, t],
@@ -139,7 +136,6 @@ export function useChat() {
           setMessages([]);
           setSources([]);
           setStreamingContent('');
-          streamedTextRef.current = '';
         }
       } catch {
         setError(t.errors.deleteConversation);
