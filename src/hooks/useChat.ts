@@ -21,6 +21,7 @@ export function useChat() {
   const [error, setError] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
+  const streamedTextRef = useRef('');
   const initialLoadDone = useRef(false);
 
   const loadConversations = useCallback(async () => {
@@ -64,15 +65,23 @@ export function useChat() {
     setSources([]);
     setError(null);
     setStreamingContent('');
+    streamedTextRef.current = '';
   }, []);
 
   const handleSendMessage = useCallback(
-    async (content: string, imageBase64?: string, fileAttachment?: FileAttachmentData, generateImage?: boolean, model?: 'fast' | 'smart') => {
+    async (
+      content: string,
+      imageBase64?: string,
+      fileAttachment?: FileAttachmentData,
+      generateImage?: boolean,
+      model?: 'fast' | 'smart',
+    ) => {
       if ((!content.trim() && !imageBase64 && !fileAttachment) || isSending) return;
       setIsSending(true);
       setError(null);
       setSources([]);
       setStreamingContent('');
+      streamedTextRef.current = '';
 
       const userMsg: Message = {
         id: `temp-${Date.now()}`,
@@ -87,8 +96,6 @@ export function useChat() {
       setMessages((prev) => [...prev, userMsg]);
 
       try {
-        let streamedText = '';
-
         const response = await sendMessage(
           content,
           activeConversationId || undefined,
@@ -96,31 +103,37 @@ export function useChat() {
           fileAttachment,
           generateImage,
           model,
-          generateImage ? undefined : (chunk: string) => {
-            streamedText += chunk;
-            setStreamingContent(streamedText);
-          },
+          generateImage
+            ? undefined
+            : (chunk: string) => {
+                streamedTextRef.current += chunk;
+                setStreamingContent(streamedTextRef.current);
+              },
         );
 
         if (!activeConversationId) setActiveConversationId(response.conversationId);
+
+        const finalContent = response.textResponse || streamedTextRef.current;
 
         const assistantMsg: Message = {
           id: `res-${Date.now()}`,
           conversation_id: response.conversationId,
           role: 'assistant',
-          content: response.textResponse || streamedText,
+          content: finalContent,
           sources: response.sources || [],
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
         setSources(response.sources || []);
         setStreamingContent('');
+        streamedTextRef.current = '';
         setIsSending(false);
         await loadConversations();
       } catch {
         setError(t.errors.sendMessage);
         setIsSending(false);
         setStreamingContent('');
+        streamedTextRef.current = '';
       }
     },
     [activeConversationId, isSending, loadConversations, t],
@@ -136,6 +149,7 @@ export function useChat() {
           setMessages([]);
           setSources([]);
           setStreamingContent('');
+          streamedTextRef.current = '';
         }
       } catch {
         setError(t.errors.deleteConversation);
