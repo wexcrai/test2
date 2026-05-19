@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { getMemories, buildMemoryPrompt, extractAndSaveMemories } from './memoryService';
+import { getMemories, buildMemoryPrompt } from './memoryService';
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -126,14 +126,6 @@ export async function sendMessage(
       }
     }
 
-    // Arka planda hafıza çıkar
-    if (userId && message && fullText) {
-      const groqKey = import.meta.env.VITE_GROQ_API_KEY;
-      if (groqKey) {
-        extractAndSaveMemories(userId, message, fullText, groqKey).catch(() => {});
-      }
-    }
-
     return {
       conversationId: responseConversationId,
       textResponse: fullText,
@@ -141,17 +133,7 @@ export async function sendMessage(
     };
   }
 
-  const result = await res.json();
-
-  // Streaming olmayan yanıtta da hafıza çıkar
-  if (userId && message && result.textResponse) {
-    const groqKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (groqKey) {
-      extractAndSaveMemories(userId, message, result.textResponse, groqKey).catch(() => {});
-    }
-  }
-
-  return result;
+  return res.json();
 }
 
 export async function getConversations(): Promise<Conversation[]> {
