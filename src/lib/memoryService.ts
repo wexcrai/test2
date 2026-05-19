@@ -32,21 +32,20 @@ export function buildMemoryPrompt(memories: Memory[]): string {
     general: memories.filter(m => m.category === 'general'),
   };
 
-  let prompt = '\n\n### Kullanıcı Hafızası (Önceki sohbetlerden öğrendiklerin):\n';
+  let prompt = '\n\n### Kullanıcı Hakkında Arka Plan Bilgisi:\n';
 
   if (grouped.personal.length)
-    prompt += `**Kişisel:** ${grouped.personal.map(m => m.memory).join(', ')}\n`;
+    prompt += `${grouped.personal.map(m => m.memory).join(', ')}\n`;
   if (grouped.preference.length)
-    prompt += `**Tercihler:** ${grouped.preference.map(m => m.memory).join(', ')}\n`;
+    prompt += `${grouped.preference.map(m => m.memory).join(', ')}\n`;
   if (grouped.fact.length)
-    prompt += `**Bilgiler:** ${grouped.fact.map(m => m.memory).join(', ')}\n`;
+    prompt += `${grouped.fact.map(m => m.memory).join(', ')}\n`;
   if (grouped.general.length)
-    prompt += `**Genel:** ${grouped.general.map(m => m.memory).join(', ')}\n`;
+    prompt += `${grouped.general.map(m => m.memory).join(', ')}\n`;
 
-  prompt += '\nBu bilgileri doğal biçimde kullan, tekrar sorma.';
+  prompt += '\nBu bilgileri sadece gerektiğinde kullan. Soruları doğrudan yanıtla, her mesajda bu bilgileri ön plana çıkarma.';
   return prompt;
 }
-
 // AI yanıtından hafıza çıkar
 export async function extractAndSaveMemories(
   userId: string,
