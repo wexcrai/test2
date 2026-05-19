@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { getMemories, buildMemoryPrompt, extractAndSaveMemories } from './memoryService';
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
