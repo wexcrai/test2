@@ -156,11 +156,11 @@ Deno.serve(async (req: Request) => {
       const model = hasImage ? VISION_MODEL : TEXT_MODEL;
 
       // Build messages for Groq API
-    const groqMessages: any[] = [
-  {
-    role: "system",
-    content: "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver."
-  }
+ const defaultPrompt = "Sen yardımcı bir yapay zeka asistanısın...";
+const finalSystemPrompt = (systemPrompt && systemPrompt.trim()) ? systemPrompt : defaultPrompt;
+
+const groqMessages: any[] = [
+  { role: "system", content: finalSystemPrompt },
 ];
 
       for (const msg of (history || [])) {
