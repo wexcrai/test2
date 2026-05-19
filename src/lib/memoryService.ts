@@ -21,13 +21,25 @@ export async function getMemories(userId: string): Promise<Memory[]> {
 }
 
 export function buildMemoryPrompt(memories: Memory[]): string {
-  if (memories.length === 0) return '';
+  const blacklist = [
+    'bilgi bulunmamaktadır', 'bilinmiyor', 'kişisel bilgi bulunamadı',
+    'kabul edilenler', 'kesinlikle', 'kullanıcı hakkında', 'hatırlanmaya değer'
+  ];
+
+  const filtered = memories.filter(m =>
+    m.memory &&
+    m.memory.length > 2 &&
+    m.memory.length < 100 &&
+    !blacklist.some(b => m.memory.toLowerCase().includes(b))
+  );
+
+  if (filtered.length === 0) return '';
 
   const grouped = {
-    personal: memories.filter(m => m.category === 'personal'),
-    preference: memories.filter(m => m.category === 'preference'),
-    fact: memories.filter(m => m.category === 'fact'),
-    general: memories.filter(m => m.category === 'general'),
+    personal: filtered.filter(m => m.category === 'personal'),
+    preference: filtered.filter(m => m.category === 'preference'),
+    fact: filtered.filter(m => m.category === 'fact'),
+    general: filtered.filter(m => m.category === 'general'),
   };
 
   let prompt = '\n\n### Kullanıcı Hakkında Arka Plan Bilgisi:\n';
