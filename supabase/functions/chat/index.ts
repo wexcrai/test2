@@ -153,7 +153,12 @@ Deno.serve(async (req: Request) => {
       const hasImage = !!imageBase64;
       const model = hasImage ? VISION_MODEL : TEXT_MODEL;
 
-      const groqMessages: any[] = [];
+   const groqMessages: any[] = [
+  {
+    role: "system",
+    content: "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver."
+  }
+];
 
       for (const msg of (history || [])) {
         if (msg.role === "user" && msg.image_base64) {
