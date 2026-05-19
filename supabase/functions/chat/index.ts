@@ -17,82 +17,6 @@ interface FileAttachment {
   content: string;
 }
 
-async function extractAndSaveMemories(
-  supabase: any,
-  groqApiKey: string,
-  userId: string,
-  userMessage: string,
-  aiResponse: string,
-) {
-  const prompt = `Aşağıdaki konuşmada KULLANICI hakkında hatırlanmaya değer kişisel bilgiler var mı?
-
-Kabul edilenler: kullanıcının kendi ismi, mesleği, şehri, dil tercihi, hobileri, kişisel tercihleri.
-Kesinlikle ALMA: AI'ın cevapları, genel bilgiler, ünlü kişiler, "bilgi bulunmamaktadır" gibi ifadeler, tek seferlik sorular.
-
-Kullanıcı mesajı: ${userMessage}
-
-Sadece JSON array döndür, başka hiçbir şey yazma:
-[
-  {"memory": "...", "category": "personal|preference|fact|general"},
-  ...
-]
-
-Eğer kullanıcı hakkında kişisel bir bilgi yoksa boş array döndür: []`;
-
-  try {
-    const response = await fetch(GROQ_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${groqApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: FAST_MODEL,
-        max_tokens: 500,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content?.trim() || "[]";
-
-    let extracted: { memory: string; category: string }[] = [];
-    try {
-      const clean = text.replace(/```json|```/g, "").trim();
-      extracted = JSON.parse(clean);
-    } catch {
-      return;
-    }
-
-    if (!extracted.length) return;
-
-    const { data: existing } = await supabase
-      .from("user_memories")
-      .select("memory")
-      .eq("user_id", userId);
-
-    const existingTexts = (existing || [])
-      .filter((m: any) => m?.memory)
-      .map((m: any) => m.memory.toLowerCase());
-
-    const newMemories = extracted.filter(
-      (e) => e?.memory && !existingTexts.some((ex: string) => ex.includes(e.memory.toLowerCase()))
-    );
-
-    if (!newMemories.length) return;
-
-    await supabase.from("user_memories").insert(
-      newMemories.map((m) => ({
-        user_id: userId,
-        memory: m.memory,
-        category: m.category || "general",
-      }))
-    );
-  } catch (err) {
-    console.error("Memory extraction error:", err);
-  }
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -359,10 +283,6 @@ Deno.serve(async (req: Request) => {
               sources: [],
             });
 
-            if (message && fullText) {
-              extractAndSaveMemories(supabase, groqApiKey, userId, message, fullText);
-            }
-
             controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
             controller.close();
           },
@@ -411,10 +331,6 @@ Deno.serve(async (req: Request) => {
         content: textResponse,
         sources: [],
       });
-
-      if (message && textResponse) {
-        extractAndSaveMemories(supabase, groqApiKey, userId, message, textResponse);
-      }
 
       return new Response(
         JSON.stringify({ conversationId: convId, textResponse, sources: [] }),
