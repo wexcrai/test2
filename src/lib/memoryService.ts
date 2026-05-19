@@ -9,7 +9,6 @@ export interface Memory {
   updated_at: string;
 }
 
-// Kullanıcının tüm hafızalarını getir
 export async function getMemories(userId: string): Promise<Memory[]> {
   const { data, error } = await supabase
     .from('user_memories')
@@ -21,7 +20,6 @@ export async function getMemories(userId: string): Promise<Memory[]> {
   return data || [];
 }
 
-// Hafızaları sistem promptuna ekle
 export function buildMemoryPrompt(memories: Memory[]): string {
   if (memories.length === 0) return '';
 
@@ -43,87 +41,15 @@ export function buildMemoryPrompt(memories: Memory[]): string {
   if (grouped.general.length)
     prompt += `${grouped.general.map(m => m.memory).join(', ')}\n`;
 
-  prompt += '\nBu bilgileri sadece gerektiğinde kullan. Soruları doğrudan yanıtla, her mesajda bu bilgileri ön plana çıkarma.';
+  prompt += '\nBu bilgileri sadece kullanıcı kendi hakkında soru sorduğunda kullan. Diğer sorulara doğrudan cevap ver.';
   return prompt;
 }
-// AI yanıtından hafıza çıkar
-export async function extractAndSaveMemories(
-  userId: string,
-  userMessage: string,
-  aiResponse: string,
-  groqApiKey: string
-): Promise<void> {
-  const prompt = `Aşağıdaki konuşmadan kullanıcı hakkında hatırlanmaya değer bilgileri çıkar.
-Sadece gerçekten önemli bilgileri al: isim, meslek, şehir, dil tercihi, hobiler, sık kullandığı araçlar, önemli tercihler.
-Sıradan veya tek seferlik şeyleri alma.
 
-Kullanıcı: ${userMessage}
-AI: ${aiResponse}
-
-Sadece JSON array döndür, başka hiçbir şey yazma:
-[
-  {"memory": "...", "category": "personal|preference|fact|general"},
-  ...
-]
-
-Eğer hatırlanacak bir şey yoksa boş array döndür: []`;
-
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant', // hızlı model yeterli
-        max_tokens: 500,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content?.trim() || '[]';
-
-    let extracted: { memory: string; category: string }[] = [];
-    try {
-      extracted = JSON.parse(text);
-    } catch {
-      return; // parse hatası olursa sessizce geç
-    }
-
-    if (!extracted.length) return;
-
-    // Mevcut hafızalarla çakışma kontrolü
-    const existing = await getMemories(userId);
-    const existingTexts = existing.map(m => m.memory.toLowerCase());
-
-    const newMemories = extracted.filter(
-      e => !existingTexts.some(ex => ex.includes(e.memory.toLowerCase()))
-    );
-
-    if (!newMemories.length) return;
-
-    await supabase.from('user_memories').insert(
-      newMemories.map(m => ({
-        user_id: userId,
-        memory: m.memory,
-        category: m.category || 'general',
-      }))
-    );
-  } catch (err) {
-    console.error('Memory extraction error:', err);
-    // hata olursa sohbeti etkileme
-  }
-}
-
-// Hafıza sil
 export async function deleteMemory(id: string): Promise<void> {
   const { error } = await supabase.from('user_memories').delete().eq('id', id);
   if (error) throw error;
 }
 
-// Hafıza güncelle
 export async function updateMemory(id: string, memory: string): Promise<void> {
   const { error } = await supabase
     .from('user_memories')
