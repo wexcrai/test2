@@ -70,7 +70,9 @@ Eğer hatırlanacak bir şey yoksa boş array döndür: []`;
       .select("memory")
       .eq("user_id", userId);
 
-    const existingTexts = (existing || []).map((m: any) => m.memory.toLowerCase());
+   const existingTexts = (existing || [])
+  .filter((m: any) => m?.memory)
+  .map((m: any) => m.memory.toLowerCase());
     const newMemories = extracted.filter(
       (e) => !existingTexts.some((ex: string) => ex.includes(e.memory.toLowerCase()))
     );
