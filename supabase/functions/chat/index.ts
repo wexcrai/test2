@@ -100,12 +100,13 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST") {
       const body = await req.json();
-      const { message, conversationId, imageBase64, fileAttachment, generateImage } = body as {
+      const { message, conversationId, imageBase64, fileAttachment, generateImage, systemPrompt } = body as {
         message: string;
         conversationId?: string;
         imageBase64?: string;
         fileAttachment?: FileAttachment;
         generateImage?: boolean;
+        systemPrompt?: string;
       };
 
       if (!message && !imageBase64 && !fileAttachment) {
@@ -155,10 +156,12 @@ Deno.serve(async (req: Request) => {
       const hasImage = !!imageBase64;
       const model = hasImage ? VISION_MODEL : TEXT_MODEL;
 
-      // Build messages for Groq API
- const groqMessages: any[] = [
-  { role: "system", content: "You are a helpful assistant." },
-];
+      // Sistem promptunu ayarlıyoruz. Boş gelirse varsayılan olarak sana reis diyecek.
+      const defaultSystemPrompt = systemPrompt || "Sen Zenkus AI adında gelişmiş bir yapay zeka asistanısın. Kullanıcıya her zaman 'reis' unvanıyla hitap edeceksin. Cevapların net, samimi, zekice ve tamamen Türkçe olmalı.";
+
+      const groqMessages: any[] = [
+        { role: "system", content: defaultSystemPrompt },
+      ];
 
       for (const msg of (history || [])) {
         if (msg.role === "user" && msg.image_base64) {
@@ -207,7 +210,7 @@ Deno.serve(async (req: Request) => {
           messages: groqMessages,
           max_tokens: 2048,
           temperature: 0.7,
-        }),
+         }),
       });
 
       if (!groqResponse.ok) {
