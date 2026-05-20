@@ -118,7 +118,12 @@ export function useChat() {
         setStreamingContent('');
         streamedTextRef.current = '';
         setIsSending(false);
-        await loadConversations();
+        
+        // Yarış durumunu (Race Condition) önlemek için listeyi hafif erteleyerek yeniliyoruz
+        setTimeout(() => {
+          loadConversations();
+        }, 200);
+
       } catch {
         setError(t.errors.sendMessage);
         setIsSending(false);
