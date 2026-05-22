@@ -52,7 +52,6 @@ export async function sendMessage(
   fileAttachment?: FileAttachmentData,
   generateImage?: boolean,
   model?: 'fast' | 'smart',
-  _onChunk?: (chunk: string) => void,
 ): Promise<ChatResponse> {
   const headers = await getHeaders();
   const body: Record<string, unknown> = { message };
