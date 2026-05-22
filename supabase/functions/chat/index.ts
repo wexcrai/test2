@@ -9,6 +9,7 @@ const corsHeaders = {
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const VISION_MODEL = "llama-3.2-11b-vision-preview";
 const TEXT_MODEL = "llama-3.3-70b-versatile";
+const FAST_MODEL = "llama-3.1-8b-instant";
 
 interface FileAttachment {
   name: string;
@@ -32,7 +33,6 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
     const { createClient } = await import("npm:@supabase/supabase-js@2.57.4");
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -52,24 +52,22 @@ Deno.serve(async (req: Request) => {
       const conversationId = url.searchParams.get("conversationId");
 
       if (conversationId) {
-        const { data: messages, error: msgError } = await supabase
+        const { data: messages } = await supabase
           .from("messages")
           .select("id, conversation_id, role, content, image_base64, file_attachment, sources, created_at")
           .eq("conversation_id", conversationId)
           .order("created_at", { ascending: true });
 
-        if (msgError) throw msgError;
         return new Response(JSON.stringify({ messages: messages || [] }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } else {
-        const { data: conversations, error: convError } = await supabase
+        const { data: conversations } = await supabase
           .from("conversations")
           .select("id, title, created_at, updated_at")
           .eq("user_id", userId)
           .order("updated_at", { ascending: false });
 
-        if (convError) throw convError;
         return new Response(JSON.stringify({ conversations: conversations || [] }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -85,14 +83,7 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      const { error: delError } = await supabase
-        .from("conversations")
-        .delete()
-        .eq("id", conversationId)
-        .eq("user_id", userId);
-
-      if (delError) throw delError;
+      await supabase.from("conversations").delete().eq("id", conversationId).eq("user_id", userId);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -100,42 +91,31 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST") {
       const body = await req.json();
-      const { message, conversationId, imageBase64, fileAttachment, generateImage } = body as {
-        message: string;
-        conversationId?: string;
-        imageBase64?: string;
-        fileAttachment?: FileAttachment;
-        generateImage?: boolean;
-      };
+      const { message, conversationId, imageBase64, fileAttachment, model: modelPref, systemPrompt } = body;
 
       if (!message && !imageBase64 && !fileAttachment) {
-        return new Response(JSON.stringify({ error: "Message, image, or file required" }), {
+        return new Response(JSON.stringify({ error: "Message required" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       let convId = conversationId;
-
       if (!convId) {
-        const titleText = message ? message.slice(0, 50) : (fileAttachment ? fileAttachment.name : "Image Chat");
-        const { data: conv, error: convError } = await supabase
+        const titleText = message ? message.slice(0, 50) : (fileAttachment ? fileAttachment.name : "Yeni Sohbet");
+        const { data: conv } = await supabase
           .from("conversations")
           .insert({ user_id: userId, title: titleText })
           .select("id")
           .single();
-
-        if (convError) throw convError;
         convId = conv.id;
       } else {
-        await supabase
-          .from("conversations")
+        await supabase.from("conversations")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", convId)
           .eq("user_id", userId);
       }
 
-      // Save user message
       await supabase.from("messages").insert({
         conversation_id: convId,
         user_id: userId,
@@ -145,43 +125,38 @@ Deno.serve(async (req: Request) => {
         file_attachment: fileAttachment || null,
       });
 
-      // Fetch conversation history for context
       const { data: history } = await supabase
         .from("messages")
         .select("role, content, image_base64, file_attachment")
         .eq("conversation_id", convId)
         .order("created_at", { ascending: true });
 
-      const hasImage = !!imageBase64;
-      const model = hasImage ? VISION_MODEL : TEXT_MODEL;
+      const finalSystemPrompt = (systemPrompt && systemPrompt.trim())
+        ? systemPrompt
+        : "You are a helpful assistant. Answer in the same language as the user.";
 
-      // Build messages for Groq API
-      const groqMessages: any[] = [];
+      const groqMessages: any[] = [
+        { role: "system", content: finalSystemPrompt }
+      ];
 
       for (const msg of (history || [])) {
         if (msg.role === "user" && msg.image_base64) {
           const content: any[] = [];
-          if (msg.content) {
-            content.push({ type: "text", text: msg.content });
-          }
+          if (msg.content) content.push({ type: "text", text: msg.content });
           content.push({
             type: "image_url",
             image_url: {
-              url: msg.image_base64.startsWith("data:")
-                ? msg.image_base64
-                : `data:image/jpeg;base64,${msg.image_base64}`,
+              url: msg.image_base64.startsWith("data:") ? msg.image_base64 : `data:image/jpeg;base64,${msg.image_base64}`,
             },
           });
           groqMessages.push({ role: "user", content });
         } else if (msg.role === "user" && msg.file_attachment) {
           const file = msg.file_attachment as FileAttachment;
-          const fileContent = file.content || "";
-          const userText = msg.content || "";
-          const combinedText = userText
-            ? `${userText}\n\n--- Dosya: ${file.name} ---\n${fileContent}`
-            : `Dosya: ${file.name}\n${fileContent}`;
+          const combinedText = msg.content
+            ? `${msg.content}\n\n--- Dosya: ${file.name} ---\n${file.content}`
+            : `Dosya: ${file.name}\n${file.content}`;
           groqMessages.push({ role: "user", content: combinedText });
-        } else {
+        } else if (msg.content) {
           groqMessages.push({ role: msg.role, content: msg.content });
         }
       }
@@ -194,6 +169,9 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      const hasImage = !!imageBase64;
+      const selectedModel = hasImage ? VISION_MODEL : modelPref === "fast" ? FAST_MODEL : TEXT_MODEL;
+
       const groqResponse = await fetch(GROQ_API_URL, {
         method: "POST",
         headers: {
@@ -201,7 +179,7 @@ Deno.serve(async (req: Request) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model,
+          model: selectedModel,
           messages: groqMessages,
           max_tokens: 2048,
           temperature: 0.7,
@@ -210,38 +188,27 @@ Deno.serve(async (req: Request) => {
 
       if (!groqResponse.ok) {
         const errBody = await groqResponse.text();
-        console.error("Groq API error:", errBody);
-        return new Response(JSON.stringify({ error: "AI model request failed" }), {
+        console.error("Groq error:", errBody);
+        return new Response(JSON.stringify({ error: "AI request failed" }), {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const groqData = await groqResponse.json();
-      const textResponse = groqData.choices?.[0]?.message?.content || "No response";
+      const textResponse = groqData.choices?.[0]?.message?.content || "Yanıt alınamadı.";
 
-      // Save assistant message
-      await supabase
-        .from("messages")
-        .insert({
-          conversation_id: convId,
-          user_id: userId,
-          role: "assistant",
-          content: textResponse,
-          sources: [],
-        })
-        .select("id")
-        .single();
+      await supabase.from("messages").insert({
+        conversation_id: convId,
+        user_id: userId,
+        role: "assistant",
+        content: textResponse,
+        sources: [],
+      });
 
       return new Response(
-        JSON.stringify({
-          conversationId: convId,
-          textResponse,
-          sources: [],
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ conversationId: convId, textResponse, sources: [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -249,14 +216,12 @@ Deno.serve(async (req: Request) => {
       status: 405,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (err) {
-    console.error("Edge function error:", err);
+    console.error("Error:", err);
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
