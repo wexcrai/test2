@@ -87,8 +87,6 @@ export function useChat() {
       setMessages((prev) => [...prev, userMsg]);
 
       try {
-        let streamedText = '';
-
         const response = await sendMessage(
           content,
           activeConversationId || undefined,
@@ -96,10 +94,6 @@ export function useChat() {
           fileAttachment,
           generateImage,
           model,
-          generateImage ? undefined : (chunk: string) => {
-            streamedText += chunk;
-            setStreamingContent(streamedText);
-          },
         );
 
         if (!activeConversationId) setActiveConversationId(response.conversationId);
@@ -108,19 +102,17 @@ export function useChat() {
           id: `res-${Date.now()}`,
           conversation_id: response.conversationId,
           role: 'assistant',
-          content: response.textResponse || streamedText,
+          content: response.textResponse,
           sources: response.sources || [],
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
         setSources(response.sources || []);
-        setStreamingContent('');
         setIsSending(false);
         await loadConversations();
       } catch {
         setError(t.errors.sendMessage);
         setIsSending(false);
-        setStreamingContent('');
       }
     },
     [activeConversationId, isSending, loadConversations, t],
