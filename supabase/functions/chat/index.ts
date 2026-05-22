@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
 
       const finalSystemPrompt = (systemPrompt && systemPrompt.trim())
         ? systemPrompt
-         : "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver.";
+        : "Sen Zenkus AI'sın, yardımcı bir yapay zeka asistanısın. Kullanıcının sorularını doğrudan ve eksiksiz yanıtla. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver. Asla soruyu görmezden gelme.";
 
       const groqMessages: any[] = [
         { role: "system", content: finalSystemPrompt }
