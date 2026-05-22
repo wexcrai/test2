@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
 
       const finalSystemPrompt = (systemPrompt && systemPrompt.trim())
         ? systemPrompt
-        : "You are a helpful assistant. Answer in the same language as the user.";
+         : "Sen yardımcı bir yapay zeka asistanısın. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver.";
 
       const groqMessages: any[] = [
         { role: "system", content: finalSystemPrompt }
