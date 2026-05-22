@@ -1,4 +1,4 @@
-
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +47,7 @@ Deno.serve(async (req: Request) => {
 
     const userId = user.id;
 
+    // GET
     if (req.method === "GET") {
       const url = new URL(req.url);
       const conversationId = url.searchParams.get("conversationId");
@@ -61,19 +62,20 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ messages: messages || [] }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-      } else {
-        const { data: conversations } = await supabase
-          .from("conversations")
-          .select("id, title, created_at, updated_at")
-          .eq("user_id", userId)
-          .order("updated_at", { ascending: false });
-
-        return new Response(JSON.stringify({ conversations: conversations || [] }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
       }
+
+      const { data: conversations } = await supabase
+        .from("conversations")
+        .select("id, title, created_at, updated_at")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false });
+
+      return new Response(JSON.stringify({ conversations: conversations || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
+    // DELETE
     if (req.method === "DELETE") {
       const url = new URL(req.url);
       const conversationId = url.searchParams.get("conversationId");
@@ -89,9 +91,24 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // POST
     if (req.method === "POST") {
       const body = await req.json();
-      const { message, conversationId, imageBase64, fileAttachment, model: modelPref, systemPrompt } = body;
+      const {
+        message,
+        conversationId,
+        imageBase64,
+        fileAttachment,
+        model: modelPref,
+        systemPrompt,
+      } = body as {
+        message: string;
+        conversationId?: string;
+        imageBase64?: string;
+        fileAttachment?: FileAttachment;
+        model?: "fast" | "smart";
+        systemPrompt?: string;
+      };
 
       if (!message && !imageBase64 && !fileAttachment) {
         return new Response(JSON.stringify({ error: "Message required" }), {
@@ -100,9 +117,14 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Conversation oluştur veya güncelle
       let convId = conversationId;
       if (!convId) {
-        const titleText = message ? message.slice(0, 50) : (fileAttachment ? fileAttachment.name : "Yeni Sohbet");
+        const titleText = message
+          ? message.slice(0, 50)
+          : fileAttachment
+          ? fileAttachment.name
+          : "Yeni Sohbet";
         const { data: conv } = await supabase
           .from("conversations")
           .insert({ user_id: userId, title: titleText })
@@ -110,12 +132,14 @@ Deno.serve(async (req: Request) => {
           .single();
         convId = conv.id;
       } else {
-        await supabase.from("conversations")
+        await supabase
+          .from("conversations")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", convId)
           .eq("user_id", userId);
       }
 
+      // Kullanıcı mesajını kaydet
       await supabase.from("messages").insert({
         conversation_id: convId,
         user_id: userId,
@@ -125,28 +149,34 @@ Deno.serve(async (req: Request) => {
         file_attachment: fileAttachment || null,
       });
 
+      // Geçmiş mesajları çek
       const { data: history } = await supabase
         .from("messages")
         .select("role, content, image_base64, file_attachment")
         .eq("conversation_id", convId)
         .order("created_at", { ascending: true });
 
-      const finalSystemPrompt = (systemPrompt && systemPrompt.trim())
-        ? systemPrompt
-        : "Sen Zenkus AI'sın, yardımcı bir yapay zeka asistanısın. Kullanıcının sorularını doğrudan ve eksiksiz yanıtla. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver. Asla soruyu görmezden gelme.";
+      // Sistem promptu
+      const finalSystemPrompt =
+        systemPrompt && systemPrompt.trim()
+          ? systemPrompt
+          : "Sen Zenkus AI'sın, yardımcı bir yapay zeka asistanısın. Kullanıcının sorularını doğrudan ve tam olarak yanıtla. Türkçe sorulara Türkçe, İngilizce sorulara İngilizce cevap ver.";
 
+      // Groq mesajlarını oluştur
       const groqMessages: any[] = [
-        { role: "system", content: finalSystemPrompt }
+        { role: "system", content: finalSystemPrompt },
       ];
 
-      for (const msg of (history || [])) {
+      for (const msg of history || []) {
         if (msg.role === "user" && msg.image_base64) {
           const content: any[] = [];
           if (msg.content) content.push({ type: "text", text: msg.content });
           content.push({
             type: "image_url",
             image_url: {
-              url: msg.image_base64.startsWith("data:") ? msg.image_base64 : `data:image/jpeg;base64,${msg.image_base64}`,
+              url: msg.image_base64.startsWith("data:")
+                ? msg.image_base64
+                : `data:image/jpeg;base64,${msg.image_base64}`,
             },
           });
           groqMessages.push({ role: "user", content });
@@ -170,7 +200,11 @@ Deno.serve(async (req: Request) => {
       }
 
       const hasImage = !!imageBase64;
-      const selectedModel = hasImage ? VISION_MODEL : modelPref === "fast" ? FAST_MODEL : TEXT_MODEL;
+      const selectedModel = hasImage
+        ? VISION_MODEL
+        : modelPref === "fast"
+        ? FAST_MODEL
+        : TEXT_MODEL;
 
       const groqResponse = await fetch(GROQ_API_URL, {
         method: "POST",
@@ -196,8 +230,10 @@ Deno.serve(async (req: Request) => {
       }
 
       const groqData = await groqResponse.json();
-      const textResponse = groqData.choices?.[0]?.message?.content || "Yanıt alınamadı.";
+      const textResponse =
+        groqData.choices?.[0]?.message?.content || "Yanıt alınamadı.";
 
+      // Asistan mesajını kaydet
       await supabase.from("messages").insert({
         conversation_id: convId,
         user_id: userId,
@@ -216,11 +252,12 @@ Deno.serve(async (req: Request) => {
       status: 405,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
   } catch (err) {
     console.error("Error:", err);
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Internal server error" }),
+      JSON.stringify({
+        error: err instanceof Error ? err.message : "Internal server error",
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
